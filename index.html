@@ -1248,12 +1248,13 @@ function renderTrip(){
 
 function renderTripResult(r){
   const stops = r.suggestedStops || [];
-  const safeBuffer = (r.safetyBuffer !== undefined ? r.safetyBuffer * 100 : 30).toFixed(0);
-  const dcChargeTo = 80; // hardcoded del modelo
+  // safeBuffer como NÚMERO blindado
+  const safeBuffer = Number(r.safetyBuffer !== undefined ? r.safetyBuffer * 100 : 30) || 30;
+  const dcChargeTo = 80;
   
   // Calcular tiempos de carga estimados por parada (LFP Tesla MY: ~110kW promedio sesión 30→80%)
   const calcChargeMin = (kwhAdded, chargerKw) => {
-    const effectivePower = Math.min(chargerKw, 175) * 0.75; // 75% eficiencia promedio
+    const effectivePower = Math.min(chargerKw, 175) * 0.75;
     return (kwhAdded / effectivePower) * 60;
   };
   
@@ -1271,7 +1272,7 @@ function renderTripResult(r){
   // Construir tramos: cada tramo va de un punto al siguiente
   // [origen → parada1 → parada2 → ... → destino]
   const points = [
-    { name: originName, isOrigin: true, soc: state.trip.startSoC, km: 0 },
+    { name: originName, isOrigin: true, soc: Number(state.trip.startSoC), km: 0 },
     ...stops.map(s => ({
       name: s.n.length > 40 ? s.n.substring(0, 38)+'...' : s.n,
       addr: `${s.d || ''}${s.c ? ', ' + s.c : ''}`.substring(0, 60),
@@ -1284,7 +1285,7 @@ function renderTripResult(r){
       chargeMin: calcChargeMin(TESLA.battery * (dcChargeTo - safeBuffer) / 100, s.pc),
       lat: s.lat, lng: s.lng
     })),
-    { name: destName, isDest: true, soc: state.trip.endSoC, km: r.distance }
+    { name: destName, isDest: true, soc: Number(state.trip.endSoC), km: r.distance }
   ];
   
   // Construir HTML del timeline
@@ -1331,9 +1332,9 @@ function renderTripResult(r){
       const segMin = (segHours * 60);
       
       // SoC al salir de este punto
-      const socOut = p.isOrigin ? p.soc : (p.socLeave !== undefined ? p.socLeave : p.soc);
+      const socOut = Number(p.isOrigin ? p.soc : (p.socLeave !== undefined ? p.socLeave : p.soc));
       // SoC al llegar al siguiente
-      const socIn = next.isDest ? next.soc : (next.socArrive !== undefined ? next.socArrive : next.soc);
+      const socIn = Number(next.isDest ? next.soc : (next.socArrive !== undefined ? next.socArrive : next.soc));
       
       timelineHtml += `
         <div class="tl-segment">
@@ -1382,7 +1383,7 @@ function renderTripResult(r){
     <div class="tl-stat-card">
       <div class="tl-stat-icon">🛡️</div>
       <div class="tl-stat-label">Buffer mín.</div>
-      <div class="tl-stat-val">${safeBuffer}%</div>
+      <div class="tl-stat-val">${safeBuffer.toFixed(0)}%</div>
     </div>
   </div>
   
