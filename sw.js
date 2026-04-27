@@ -1,10 +1,8 @@
-// Service Worker - EV Trip Chile
-// Cache-first para HTML y assets, network-first para tiles del mapa
+// Service Worker - Trip Chile (EV + Turismo) v3
+// CACHE_NAME bump fuerza la limpieza de caches antiguas
+const CACHE_NAME = 'trip-chile-v3-' + new Date().toISOString().split('T')[0];
 
-const CACHE_NAME = 'ev-trip-chile-v1';
 const APP_SHELL = [
-  './',
-  './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -17,70 +15,81 @@ const APP_SHELL = [
   'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js'
 ];
 
-// Install: precachear app shell
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL).catch(err => {
-        console.warn('SW: algunos recursos no se pudieron precachear:', err);
-      }))
-      .then(() => self.skipWaiting())
+self.addEventListener('install', e => {
+  // Instalar inmediatamente, sin esperar a que cierren todas las pestañas
+  self.skipWaiting();
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(c => c.addAll(APP_SHELL).catch(()=>{}))
   );
 });
 
-// Activate: limpiar caches viejos
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+self.addEventListener('activate', e => {
+  // Limpiar TODAS las cachés antiguas y tomar control inmediato
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+    )).then(() => self.clients.claim())
   );
 });
 
-// Fetch: estrategia híbrida
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
   
-  // Tiles del mapa: network-first con fallback a cache (datos cambian poco)
-  if (url.hostname.includes('basemaps.cartocdn.com') ||
-      url.hostname.includes('arcgisonline.com') ||
-      url.hostname.includes('tile.openstreetmap')) {
-    event.respondWith(
-      fetch(event.request)
-        .then(res => {
-          // Cachear el tile para offline
-          const resClone = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, resClone));
-          return res;
-        })
-        .catch(() => caches.match(event.request))
+  // CRÍTICO: index.html y la raíz del sitio = NETWORK FIRST
+  // (siempre intenta bajar la versión más nueva primero)
+  if (e.request.mode === 'navigate' || 
+      url.pathname.endsWith('/') || 
+      url.pathname.endsWith('/index.html')) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        // Cache la respuesta nueva para offline
+        const c = res.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(e.request, c));
+        return res;
+      }).catch(() => caches.match(e.request).then(cached => cached || caches.match('./index.html')))
     );
     return;
   }
   
-  // OSRM y APIs externas: solo network (no cachear, pueden cambiar)
-  if (url.hostname.includes('router.project-osrm.org') ||
-      url.hostname.includes('routing.openstreetmap.de')) {
-    event.respondWith(fetch(event.request));
+  // Tiles del mapa: cache-first con actualización en background
+  if (url.hostname.includes('basemaps.cartocdn.com') || 
+      url.hostname.includes('arcgisonline.com')) {
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        const fetchPromise = fetch(e.request).then(res => {
+          const c = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, c));
+          return res;
+        }).catch(() => cached);
+        return cached || fetchPromise;
+      })
+    );
     return;
   }
   
-  // Todo lo demás: cache-first
-  event.respondWith(
-    caches.match(event.request)
-      .then(cached => cached || fetch(event.request).then(res => {
-        // Cachear respuestas exitosas para próxima vez
-        if (res.status === 200 && event.request.method === 'GET') {
-          const resClone = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, resClone));
-        }
-        return res;
-      }))
-      .catch(() => {
-        // Si todo falla y es una página HTML, retornar la app shell
-        if (event.request.destination === 'document') {
-          return caches.match('./index.html');
-        }
-      })
+  // OSRM y Overpass: solo network (datos dinámicos)
+  if (url.hostname.includes('router.project-osrm.org') || 
+      url.hostname.includes('routing.openstreetmap') ||
+      url.hostname.includes('overpass')) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+  
+  // Resto: cache-first con fallback a network
+  e.respondWith(
+    caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
+      if (res.status === 200 && e.request.method === 'GET') {
+        const c = res.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(e.request, c));
+      }
+      return res;
+    }))
   );
+});
+
+// Permitir que la app fuerce skipWaiting desde cliente
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });

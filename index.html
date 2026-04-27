@@ -10,7 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="EV Trip Chile">
 <meta name="format-detection" content="telephone=no">
-<meta name="description" content="Planificador de carga EV en Chile para Tesla Model Y. 556 estaciones de carga, rutas reales por carretera, modo offline.">
+<meta name="description" content="App de viajes Chile: 556 cargadores EV, hoteles, restaurants, miradores, observatorios astronómicos. Rutas reales por carretera.">
 
 <!-- PWA manifest -->
 <link rel="manifest" href="manifest.json">
@@ -20,7 +20,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
-<title>EV Trip Chile · Tesla Model Y</title>
+<title>Trip Chile · EV + Turismo + Astronomía</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
@@ -292,15 +292,45 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);
 
 /* ROUTE STOPS LIST */
 .stops-list{margin-top:10px}
+.stop-card-wrap{margin-bottom:8px}
 .stop-card{background:var(--bg);border:1px solid var(--line);border-radius:11px;
-  padding:11px;margin-bottom:8px;display:flex;gap:10px;align-items:center;cursor:pointer;
+  padding:11px;display:flex;gap:10px;align-items:center;cursor:pointer;
   transition:all .15s}
+.stop-card.primary-stop{border-left:3px solid #10b981}
 .stop-card:hover{border-color:#0066cc}
-.stop-num{width:26px;height:26px;border-radius:50%;background:#0066cc;color:#fff;
+.stop-num{width:26px;height:26px;border-radius:50%;background:#10b981;color:#fff;
   display:grid;place-items:center;font-size:12px;font-weight:700;flex-shrink:0}
 .stop-info{flex:1;min-width:0}
 .stop-name{font-size:13px;font-weight:600}
 .stop-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.alt-toggle{background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:5px 8px;
+  cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:4px;flex-shrink:0;
+  transition:all .15s;font-family:inherit}
+.alt-toggle:hover{background:var(--line);color:var(--text)}
+.alt-toggle.expanded svg{transform:rotate(180deg)}
+.alt-toggle svg{transition:transform .25s ease}
+.alt-count{font-size:11px;font-weight:700;background:#f59e0b;color:#000;
+  border-radius:8px;padding:1px 6px;min-width:16px;text-align:center}
+.alt-list{margin-top:6px;padding-left:14px;border-left:2px dashed var(--line);
+  animation:slideDown .25s ease-out}
+@keyframes slideDown{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.alt-header{font-size:11px;color:var(--muted);font-weight:600;padding:4px 0 6px;text-transform:uppercase;letter-spacing:0.04em}
+.alt-card{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:9px;
+  padding:9px;display:flex;gap:9px;align-items:center;cursor:pointer;margin-bottom:6px;transition:all .15s}
+.alt-card:hover{background:rgba(245,158,11,.15);border-color:#f59e0b}
+.alt-icon{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;
+  flex-shrink:0;font-size:11px;font-weight:700;color:#fff}
+.alt-info{flex:1;min-width:0}
+.alt-name{font-size:12px;font-weight:600;line-height:1.3}
+.alt-meta{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* Legend en panel de viaje */
+.legend-row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.legend-item{display:flex;align-items:center;gap:5px}
+.leg-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.leg-primary{background:#0066cc;box-shadow:0 0 0 2px #10b981}
+.leg-alt{background:#0066cc;box-shadow:0 0 0 2px #f59e0b}
+.leg-dim{background:#94a3b8;opacity:.4}
 
 /* ============== EMPTY ============== */
 .empty{text-align:center;padding:30px 20px;color:var(--muted)}
@@ -315,9 +345,14 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);
 
 /* ============== CUSTOM MARKERS ============== */
 .custom-marker{background:transparent !important;border:none !important}
-.cm{width:30px;height:36px;position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
+.cm{width:30px;height:36px;position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));transition:all .3s ease}
 .cm-pin{width:30px;height:30px;border-radius:50% 50% 50% 0;
-  transform:rotate(-45deg);display:grid;place-items:center;border:2px solid #fff}
+  transform:rotate(-45deg);display:grid;place-items:center;border:2px solid #fff;transition:all .3s ease}
+.cm-highlighted{animation:bounce-in .5s ease-out,glow-green 2s ease-in-out infinite alternate}
+.cm-highlighted .cm-pin{border:3px solid #10b981 !important}
+.cm-alternative .cm-pin{border:2.5px solid #f59e0b !important}
+@keyframes bounce-in{0%{transform:scale(.3) translateY(-20px);opacity:0}60%{transform:scale(1.15) translateY(0);opacity:1}100%{transform:scale(1)}}
+@keyframes glow-green{from{filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}to{filter:drop-shadow(0 0 8px rgba(16,185,129,.7)) drop-shadow(0 2px 6px rgba(0,0,0,.3))}}
 .cm-icon{transform:rotate(45deg);color:#fff;font-size:11px;font-weight:700}
 .cm.fast::after{content:"⚡";position:absolute;top:-4px;right:-4px;width:14px;height:14px;
   background:#f59e0b;border-radius:50%;display:grid;place-items:center;font-size:8px;
@@ -393,10 +428,10 @@ body.standalone-mode{padding-top:0}
 <!-- TOP BAR -->
 <div class="topbar">
   <div class="brand">
-    <div class="brand-logo">⚡</div>
+    <div class="brand-logo" id="modeIndicator">⚡</div>
     <div class="brand-text">
-      EV Trip Chile
-      <small>Tesla Model Y · Juniper 2026</small>
+      <span id="brandTitle">Trip Chile</span>
+      <small id="brandSubtitle">EV + Turismo + Astronomía</small>
     </div>
     <button class="theme-toggle" id="themeBtn" title="Cambiar tema">
       <svg id="themeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
@@ -404,7 +439,7 @@ body.standalone-mode{padding-top:0}
   </div>
   <div class="searchpill">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-    <input id="searchInput" type="text" placeholder="Buscar ciudad, comuna o estación..." autocomplete="off">
+    <input id="searchInput" type="text" placeholder="Buscar ciudad, hotel, restaurante, lugar..." autocomplete="off">
     <button id="clearBtn" title="Limpiar" style="display:none">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </button>
@@ -414,13 +449,13 @@ body.standalone-mode{padding-top:0}
     <div class="search-dropdown" id="searchDropdown"></div>
   </div>
   <div class="chips">
-    <div class="chip active" data-quick="all">Todos <span id="cAll">0</span></div>
-    <div class="chip" data-quick="fast">⚡ DC rápida <span id="cFast">0</span></div>
-    <div class="chip" data-quick="ccs2">CCS2 <span id="cCcs">0</span></div>
-    <div class="chip" data-quick="copec"><span class="dot" style="background:#0066CC"></span>Copec</div>
-    <div class="chip" data-quick="enel"><span class="dot" style="background:#E91E63"></span>Enel X</div>
-    <div class="chip" data-quick="enex"><span class="dot" style="background:#FF6600"></span>Shell/Enex</div>
-    <div class="chip" data-quick="tesla"><span class="dot" style="background:#CC0000"></span>Tesla</div>
+    <div class="chip layer-chip active" data-layer="ev">⚡ Cargadores <span id="cEV">0</span></div>
+    <div class="chip layer-chip" data-layer="hotel">🏨 Hoteles <span id="cHotel">0</span></div>
+    <div class="chip layer-chip" data-layer="restaurant">🍽️ Restaurants <span id="cRest">0</span></div>
+    <div class="chip layer-chip" data-layer="historic">🏛️ Históricos <span id="cHist">0</span></div>
+    <div class="chip layer-chip" data-layer="nature">🌲 Naturaleza <span id="cNat">0</span></div>
+    <div class="chip layer-chip" data-layer="attraction">📍 Atracciones <span id="cAttr">0</span></div>
+    <div class="chip layer-chip" data-layer="astro">🌌 Astronomía <span id="cAstro">0</span></div>
   </div>
 </div>
 
@@ -511,8 +546,30 @@ const OP_INITIALS = {
 };
 
 // ============== ESTADO ==============
+// Datos turismo (se cargan en runtime desde Overpass API)
+let TOURISM_POIS = [];
+
+// Estado de capas activas
+const LAYERS = {
+  ev: { active: true, label: '⚡ Cargadores', color: null },
+  hotel: { active: false, label: '🏨 Hoteles', color: '#8B5CF6', icon: '🏨' },
+  restaurant: { active: false, label: '🍽️ Restaurants', color: '#DC2626', icon: '🍽️' },
+  historic: { active: false, label: '🏛️ Históricos', color: '#92400E', icon: '🏛️' },
+  nature: { active: false, label: '🌲 Naturaleza', color: '#10B981', icon: '🌲' },
+  attraction: { active: false, label: '📍 Atracciones', color: '#0891B2', icon: '📍' },
+  astro: { active: false, label: '🌌 Astronomía', color: '#7C3AED', icon: '🌌' }
+};
+
 const state = {
   filtered: STATIONS,
+  tripActive: false,
+  highlightedStops: new Set(),
+  alternativeStops: new Set(),
+  tourismLoaded: false,
+  tourismLoading: false,
+  tripShowLayers: new Set(['ev']),
+  tripPOIs: [],
+
   filters: {
     quick:'all', operators:new Set(), minPower:0,
     onlyDC:false, onlyTeslaCompat:true,
@@ -581,14 +638,44 @@ const cluster = L.markerClusterGroup({
 });
 
 function makeIcon(s){
-  const color = OP_COLORS[s.op] || OP_COLORS['Otro'];
-  const initials = OP_INITIALS[s.op] || '?';
-  const size = s.fast ? 36 : 30;
-  const isFast = s.fast ? 'fast' : '';
+  // Determinar color e ícono según el tipo
+  let color, initials;
+  if(s._type === 'ev' || !s._type){
+    color = OP_COLORS[s.op] || OP_COLORS['Otro'];
+    initials = OP_INITIALS[s.op] || '?';
+  } else {
+    // POI turismo
+    const layer = LAYERS[s._type];
+    color = layer ? layer.color : '#64748b';
+    initials = layer ? layer.icon : '?';
+  }
+  const key = `${s.lat}_${s.lng}`;
+  const isHighlighted = state.highlightedStops.has(key);
+  const isAlternative = state.alternativeStops.has(key);
+  const isDimmed = state.tripActive && !isHighlighted && !isAlternative;
+  
+  let size = s.fast ? 36 : 30;
+  let cls = s.fast ? 'fast' : '';
+  let opacity = 1;
+  let extraStyle = '';
+  let extraClass = '';
+  
+  if(isHighlighted){
+    size = 50; // más grande
+    extraClass = ' cm-highlighted';
+    extraStyle = 'box-shadow:0 0 0 4px rgba(16,185,129,.4),0 4px 16px rgba(0,0,0,.5);z-index:1000';
+  } else if(isAlternative){
+    size = 38;
+    extraClass = ' cm-alternative';
+    extraStyle = 'box-shadow:0 0 0 3px rgba(245,158,11,.5),0 3px 10px rgba(0,0,0,.4)';
+  } else if(isDimmed){
+    opacity = 0.25;
+  }
+  
   return L.divIcon({
     className:'custom-marker',
-    html:`<div class="cm ${isFast}" style="width:${size}px;height:${size+6}px">
-      <div class="cm-pin" style="background:${color};width:${size}px;height:${size}px"><span class="cm-icon" style="font-size:${size>32?12:10}px">${initials}</span></div>
+    html:`<div class="cm ${cls}${extraClass}" style="width:${size}px;height:${size+6}px;opacity:${opacity}">
+      <div class="cm-pin" style="background:${color};width:${size}px;height:${size}px;${extraStyle}"><span class="cm-icon" style="font-size:${size>40?14:size>32?12:10}px">${initials}</span></div>
     </div>`,
     iconSize:[size, size+6], iconAnchor:[size/2, size+6]
   });
@@ -609,24 +696,46 @@ function buildMarkers(list){
 
 map.addLayer(cluster);
 
-// ============== FILTRADO ==============
+// ============== FILTRADO MULTI-CAPA ==============
 function applyFilters(){
   const f = state.filters;
-  let list = STATIONS;
-  if(f.quick === 'fast') list = list.filter(s=>s.fast);
-  else if(f.quick === 'ccs2') list = list.filter(s=>s.co.includes('CCS2'));
-  else if(f.quick === 'copec') list = list.filter(s=>s.op==='Copec Voltex');
-  else if(f.quick === 'enel') list = list.filter(s=>s.op==='Enel X Way');
-  else if(f.quick === 'enex') list = list.filter(s=>s.op==='Enex E-Pro');
-  else if(f.quick === 'tesla') list = list.filter(s=>s.op==='Tesla');
-  if(f.minPower > 0) list = list.filter(s=>s.pc >= f.minPower);
-  if(f.onlyDC) list = list.filter(s=>s.tc==='DC');
-  if(f.onlyTeslaCompat) list = list.filter(s=>s.tcomp);
-  if(f.operators.size>0) list = list.filter(s=>f.operators.has(s.op));
-  if(f.connectors.size>0 && f.connectors.size<6)
-    list = list.filter(s=>s.co.some(c=>f.connectors.has(c)));
-  state.filtered = list;
-  buildMarkers(list);
+  let combined = [];
+
+  // CAPA EV
+  if(LAYERS.ev.active){
+    let ev = STATIONS;
+    if(f.minPower > 0) ev = ev.filter(s=>s.pc >= f.minPower);
+    if(f.onlyDC) ev = ev.filter(s=>s.tc==='DC');
+    if(f.onlyTeslaCompat) ev = ev.filter(s=>s.tcomp);
+    if(f.operators.size>0) ev = ev.filter(s=>f.operators.has(s.op));
+    if(f.connectors.size>0 && f.connectors.size<6)
+      ev = ev.filter(s=>s.co.some(c=>f.connectors.has(c)));
+    // Marcar tipo y agregar
+    combined = combined.concat(ev.map(s=>({...s, _type:'ev'})));
+  }
+
+  // CAPAS TURISMO
+  ['hotel','restaurant','historic','nature','attraction','astro'].forEach(layerKey=>{
+    if(LAYERS[layerKey].active && TOURISM_POIS.length){
+      const pois = TOURISM_POIS.filter(p => p.cat === layerKey);
+      combined = combined.concat(pois.map(p=>({...p, _type:layerKey})));
+    }
+  });
+
+  state.filtered = combined;
+  buildMarkers(combined);
+  updateChipCounts();
+}
+
+function updateChipCounts(){
+  const total = state.filtered.length;
+  document.getElementById('cEV').textContent = state.filtered.filter(s=>s._type==='ev').length;
+  document.getElementById('cHotel').textContent = TOURISM_POIS.filter(p=>p.cat==='hotel').length || '·';
+  document.getElementById('cRest').textContent = TOURISM_POIS.filter(p=>p.cat==='restaurant').length || '·';
+  document.getElementById('cHist').textContent = TOURISM_POIS.filter(p=>p.cat==='historic').length || '·';
+  document.getElementById('cNat').textContent = TOURISM_POIS.filter(p=>p.cat==='nature').length || '·';
+  document.getElementById('cAttr').textContent = TOURISM_POIS.filter(p=>p.cat==='attraction').length || '·';
+  document.getElementById('cAstro').textContent = TOURISM_POIS.filter(p=>p.cat==='astro').length || '·';
 }
 
 // ============== TABS ==============
@@ -708,6 +817,19 @@ function renderTrip(){
   <div class="section">
     <h3>🚗 Planificador de viaje</h3>
     <div class="field">
+      <label>🌟 Mostrar en la ruta:</label>
+      <div class="opchips" style="margin-top:6px">
+        ${['ev','hotel','restaurant','historic','nature','attraction','astro'].map(k=>{
+          const l = LAYERS[k];
+          const isOn = state.tripShowLayers ? state.tripShowLayers.has(k) : (k==='ev');
+          return `<div class="opchip ${isOn?'active':''}" data-trip-layer="${k}" style="font-size:11px">
+            ${k==='ev'?'⚡':l.icon} ${l.label.replace(/^[^\s]+\s/,'')}
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="help">Selecciona qué destacar a lo largo de tu ruta</div>
+    </div>
+    <div class="field">
       <label>Origen</label>
       <div class="input-wrap">
         <input class="input trip-input" id="tripOrigin" type="text" autocomplete="off"
@@ -780,26 +902,74 @@ function renderTripResult(r){
       <span class="trip-stat-val highlight">$${r.savings.toLocaleString('es-CL')} (${r.savingsPct}%)</span>
     </div>
   </div>
+  ${state.tripPOIs && state.tripPOIs.length > 0 ? `
+    <div class="section" style="margin-top:14px">
+      <h3>🌟 Sitios de interés en tu ruta (${state.tripPOIs.length})</h3>
+      <div class="stops-list">
+        ${state.tripPOIs.slice(0, 15).map((p,i)=>{
+          const l = LAYERS[p._type] || LAYERS.attraction;
+          return `<div class="stop-card" data-poi-lat="${p.lat}" data-poi-lng="${p.lng}" style="border-left:3px solid ${l.color}">
+            <div class="stop-num" style="background:${l.color}">${l.icon}</div>
+            <div class="stop-info">
+              <div class="stop-name">${p.n}</div>
+              <div class="stop-meta">${l.label.replace(/^[^\s]+\s/,'')}${p.c ? ' · ' + p.c : ''} · ${p.distFromOrigin ? p.distFromOrigin.toFixed(0)+'km del origen' : ''} · desvío ${p.detour.toFixed(1)}km</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${state.tripPOIs.length > 15 ? `<div class="help">+${state.tripPOIs.length - 15} más en el mapa</div>` : ''}
+    </div>
+  ` : ''}
   ${r.suggestedStops.length > 0 ? `
     <div class="section" style="margin-top:14px">
-      <h3>📍 Cargadores DC sugeridos en ruta</h3>
+      <h3>⚡ Paradas de carga sugeridas</h3>
+      <div class="legend-row">
+        <div class="legend-item"><span class="leg-dot leg-primary"></span>Sugerida</div>
+        <div class="legend-item"><span class="leg-dot leg-alt"></span>Alternativa</div>
+        <div class="legend-item"><span class="leg-dot leg-dim"></span>Otras (atenuadas)</div>
+      </div>
       <div class="stops-list">
-        ${r.suggestedStops.map((s,i)=>`
-          <div class="stop-card" data-station-lat="${s.lat}" data-station-lng="${s.lng}">
-            <div class="stop-num">${i+1}</div>
-            <div class="stop-info">
-              <div class="stop-name">${s.n}</div>
-              <div class="stop-meta">${s.op} · ${s.pc}kW · ${s.distFromOrigin.toFixed(0)}km del origen · desvío ${s.detour.toFixed(1)}km</div>
+        ${r.suggestedStops.map((s,i)=>{
+          const altGroup = r.alternativesByStop[i];
+          const hasAlts = altGroup && altGroup.alternatives.length > 0;
+          return `
+          <div class="stop-card-wrap">
+            <div class="stop-card primary-stop" data-station-lat="${s.lat}" data-station-lng="${s.lng}">
+              <div class="stop-num">${i+1}</div>
+              <div class="stop-info">
+                <div class="stop-name">${s.n}</div>
+                <div class="stop-meta">${s.op} · ${s.pc}kW · ${s.distFromOrigin.toFixed(0)}km del origen · desvío ${s.detour.toFixed(1)}km</div>
+              </div>
+              ${hasAlts ? `<button class="alt-toggle" data-alt-idx="${i}" title="Ver alternativas">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+                <span class="alt-count">${altGroup.alternatives.length}</span>
+              </button>` : ''}
             </div>
+            ${hasAlts ? `
+              <div class="alt-list" id="altList-${i}" style="display:none">
+                <div class="alt-header">⚠️ Si la parada ${i+1} no está disponible:</div>
+                ${altGroup.alternatives.map(a => `
+                  <div class="alt-card" data-station-lat="${a.lat}" data-station-lng="${a.lng}">
+                    <div class="alt-icon" style="background:${OP_COLORS[a.op]}">${OP_INITIALS[a.op]}</div>
+                    <div class="alt-info">
+                      <div class="alt-name">${a.n}</div>
+                      <div class="alt-meta">${a.op} · ${a.pc}kW · a ${a.distanceFromStop.toFixed(1)}km de la sugerida</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     </div>
   ` : ''}
   ${r ? `
-    <div class="actions">
-      <button class="btn btn-secondary" id="saveRoute">⭐ Guardar ruta</button>
-      <button class="btn btn-secondary" id="shareTrip">🗺️ Google Maps</button>
+    <div class="actions" style="grid-template-columns:1fr 1fr 1fr">
+      <button class="btn btn-secondary" id="saveRoute">⭐ Guardar</button>
+      <button class="btn btn-secondary" id="shareTrip">🗺️ Maps</button>
+      <button class="btn btn-secondary" id="clearTrip">✖️ Limpiar</button>
     </div>
     <button class="btn btn-primary" id="shareTripNative" style="width:100%;margin-bottom:8px">📲 Compartir ruta al auto</button>
     <div class="help">📲 Abre el menú nativo del sistema. Selecciona <b>Tesla</b> para enviar la ruta al auto (requiere app Tesla instalada y vinculada).</div>
@@ -853,6 +1023,18 @@ function renderFavs(){
 function renderInfo(){
   return `
   <div class="section">
+    <h3>🌐 Capas activas</h3>
+    <div class="opchips">
+      ${Object.entries(LAYERS).map(([k,l])=>`
+        <div class="opchip ${l.active?'active':''}" data-toggle-layer="${k}">
+          ${k==='ev'?'⚡':l.icon} ${l.label.replace(/^[^\s]+\s/,'')}
+        </div>
+      `).join('')}
+    </div>
+    <button class="btn btn-secondary" id="reloadTourism" style="width:100%;margin-top:10px">🔄 Recargar datos turismo desde OSM</button>
+    <div class="help" style="margin-top:8px">${state.tourismLoaded ? '✓ ' + TOURISM_POIS.length + ' puntos turísticos cargados' : 'Activa una capa de turismo para descargar datos de OpenStreetMap'}</div>
+  </div>
+  <div class="section">
     <h3>🚗 Tu vehículo</h3>
     <div class="stats">
       <div class="stat"><div class="stat-label">Modelo</div><div class="stat-value" style="font-size:14px">Model Y RWD<br><small>Juniper 2026</small></div></div>
@@ -894,10 +1076,67 @@ function renderInfo(){
   `;
 }
 
-// ============== RENDER ESTACIÓN ==============
+// ============== RENDER POI TURISMO ==============
+function renderTourismPOI(p){
+  const isFav = state.favorites.some(f=>f.lat===p.lat && f.lng===p.lng);
+  const layer = LAYERS[p._type] || {color:'#64748b', icon:'📍', label:'POI'};
+  const typeLabels = {
+    hotel: 'Alojamiento', restaurant: 'Restaurant', historic: 'Sitio histórico',
+    nature: 'Naturaleza', attraction: 'Atracción', astro: 'Astronomía'
+  };
+  return `
+  <div class="station-header">
+    <div style="flex:1;min-width:0">
+      <div class="station-title">${p.n}</div>
+      <div class="station-addr">${layer.icon} ${typeLabels[p._type]}${p.type ? ' · ' + p.type : ''}${p.c ? ' · ' + p.c : ''}</div>
+      ${p.d ? `<div class="station-addr">📍 ${p.d}</div>` : ''}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+      <span class="station-badge" style="background:${layer.color};color:#fff">${typeLabels[p._type]}</span>
+    </div>
+  </div>
+  
+  ${p.cuisine || p.stars || p.hours || p.phone || p.website ? `
+    <div class="trip-results" style="margin-bottom:14px">
+      ${p.stars ? `<div class="trip-stat"><span class="trip-stat-label">⭐ Categoría</span><span class="trip-stat-val">${p.stars} estrellas</span></div>` : ''}
+      ${p.cuisine ? `<div class="trip-stat"><span class="trip-stat-label">🍴 Cocina</span><span class="trip-stat-val">${p.cuisine}</span></div>` : ''}
+      ${p.hours ? `<div class="trip-stat"><span class="trip-stat-label">🕐 Horario</span><span class="trip-stat-val" style="font-size:11px">${p.hours.substring(0,40)}</span></div>` : ''}
+      ${p.phone ? `<div class="trip-stat"><span class="trip-stat-label">📞 Teléfono</span><span class="trip-stat-val" style="font-size:11px">${p.phone}</span></div>` : ''}
+    </div>
+  ` : ''}
+  
+  ${p._type === 'astro' ? `
+    <div class="warn">
+      🌌 <b>Tip astronómico</b>: para mejor visualización del cielo nocturno, planifica para luna nueva, cielos despejados y altitudes >1500m. Coquimbo, Atacama y Antofagasta tienen los cielos más oscuros del mundo.
+    </div>
+  ` : ''}
+  
+  <h3 style="font-size:11px;text-transform:uppercase;color:var(--muted);margin:14px 0 8px">📌 Acciones rápidas</h3>
+  
+  <div class="actions">
+    <button class="btn btn-fav ${isFav?'active':''}" id="favBtn">${isFav?'⭐ Guardado':'☆ Guardar'}</button>
+    <button class="btn btn-secondary" id="setDestBtn">🎯 Ir aquí</button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+    <button class="btn btn-secondary" id="gmapsBtn">🗺️ Google Maps</button>
+    <button class="btn btn-primary" id="shareBtn">📲 Compartir al auto</button>
+  </div>
+  ${p.website ? `<button class="btn btn-secondary" id="webBtn" style="width:100%;margin-bottom:8px">🌐 Sitio web</button>` : ''}
+  ${p.wiki ? `<button class="btn btn-secondary" id="wikiBtn" style="width:100%;margin-bottom:8px">📖 Wikipedia</button>` : ''}
+  <div class="help">Datos abiertos de OpenStreetMap. Pueden ser incompletos.</div>
+  `;
+}
+
+// ============== RENDER ESTACIÓN / POI ==============
 function renderStation(){
   const s = state.selectedStation;
-  if(!s) return '<div class="empty">Selecciona una estación en el mapa</div>';
+  if(!s) return '<div class="empty">Selecciona un punto en el mapa</div>';
+  
+  // Si es un POI de turismo, renderizar diferente
+  if(s._type && s._type !== 'ev'){
+    return renderTourismPOI(s);
+  }
+  
   const isFav = state.favorites.some(f=>f.lat===s.lat && f.lng===s.lng);
   return `
   <div class="station-header">
@@ -976,6 +1215,30 @@ function renderStation(){
 
 // ============== HANDLERS ==============
 function attachHandlers(tab){
+  if(tab==='info'){
+    document.querySelectorAll('[data-toggle-layer]').forEach(el=>{
+      el.addEventListener('click', async ()=>{
+        const layer = el.dataset.toggleLayer;
+        if(layer !== 'ev' && !state.tourismLoaded && !state.tourismLoading){
+          await loadTourismData();
+        }
+        LAYERS[layer].active = !LAYERS[layer].active;
+        el.classList.toggle('active', LAYERS[layer].active);
+        // Sincronizar también el chip arriba
+        const chipUp = document.querySelector(`.layer-chip[data-layer="${layer}"]`);
+        if(chipUp) chipUp.classList.toggle('active', LAYERS[layer].active);
+        applyFilters();
+      });
+    });
+    document.getElementById('reloadTourism')?.addEventListener('click', async ()=>{
+      localStorage.removeItem('tourism_pois');
+      localStorage.removeItem('tourism_loaded_at');
+      state.tourismLoaded = false;
+      state.tourismLoading = false;
+      await loadTourismData();
+      renderTab('info');
+    });
+  }
   if(tab==='filters'){
     document.querySelectorAll('[data-toggle]').forEach(el=>{
       el.addEventListener('click', ()=>{
@@ -1091,11 +1354,46 @@ function attachHandlers(tab){
     document.getElementById('shareTrip')?.addEventListener('click', shareToGoogleMaps);
     document.getElementById('shareTripNative')?.addEventListener('click', shareTripToCar);
     document.getElementById('saveRoute')?.addEventListener('click', saveCurrentRoute);
+    document.getElementById('clearTrip')?.addEventListener('click', clearTripView);
     document.querySelectorAll('[data-station-lat]').forEach(el=>{
-      el.addEventListener('click', ()=>{
+      el.addEventListener('click', e=>{
+        if(e.target.closest('.alt-toggle')) return;
         const lat = +el.dataset.stationLat, lng = +el.dataset.stationLng;
         const station = STATIONS.find(x=>x.lat===lat && x.lng===lng);
-        if(station){ map.flyTo([station.lat, station.lng], 15); showStation(station); }
+        if(station){ map.flyTo([station.lat, station.lng], 15); showStation({...station, _type:'ev'}); }
+      });
+    });
+    // Chips de capas en planificador
+    document.querySelectorAll('[data-trip-layer]').forEach(el=>{
+      el.addEventListener('click', async ()=>{
+        const layer = el.dataset.tripLayer;
+        if(layer !== 'ev' && !state.tourismLoaded && !state.tourismLoading){
+          toast('Descargando datos de turismo...');
+          await loadTourismData();
+        }
+        if(state.tripShowLayers.has(layer)) state.tripShowLayers.delete(layer);
+        else state.tripShowLayers.add(layer);
+        el.classList.toggle('active', state.tripShowLayers.has(layer));
+      });
+    });
+    // Click en POI de la ruta
+    document.querySelectorAll('[data-poi-lat]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        const lat = +el.dataset.poiLat, lng = +el.dataset.poiLng;
+        const poi = TOURISM_POIS.find(p=>p.lat===lat && p.lng===lng);
+        if(poi){ map.flyTo([poi.lat, poi.lng], 15); showStation({...poi, _type:poi.cat}); }
+      });
+    });
+    // Toggle alternativas
+    document.querySelectorAll('.alt-toggle').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        e.stopPropagation();
+        const idx = btn.dataset.altIdx;
+        const list = document.getElementById('altList-'+idx);
+        if(!list) return;
+        const isOpen = list.style.display === 'block';
+        list.style.display = isOpen ? 'none' : 'block';
+        btn.classList.toggle('expanded', !isOpen);
       });
     });
   }
@@ -1105,7 +1403,7 @@ function attachHandlers(tab){
     document.getElementById('setDestBtn')?.addEventListener('click', ()=>{
       const s = state.selectedStation;
       state.trip.destCoords = [s.lat, s.lng];
-      state.trip.destText = `${s.n} (${s.c})`;
+      state.trip.destText = `${s.n}${s.c ? ' (' + s.c + ')' : ''}`;
       document.querySelector('[data-tab="trip"]').click();
       toast('Destino fijado en planificador ✓');
     });
@@ -1118,10 +1416,25 @@ function attachHandlers(tab){
       const s = state.selectedStation;
       await shareToCar({
         title: s.n,
-        text: `${s.n} - ${s.d}, ${s.c}`,
+        text: `${s.n}${s.d ? ' - ' + s.d : ''}${s.c ? ', ' + s.c : ''}`,
         lat: s.lat,
         lng: s.lng
       });
+    });
+    // Solo para POIs turismo
+    document.getElementById('webBtn')?.addEventListener('click', ()=>{
+      const url = state.selectedStation.website;
+      if(url) window.open(url.startsWith('http') ? url : 'https://' + url, '_blank');
+    });
+    document.getElementById('wikiBtn')?.addEventListener('click', ()=>{
+      const wiki = state.selectedStation.wiki;
+      if(wiki){
+        // Formato: "es:Nombre artículo"
+        const parts = wiki.split(':');
+        const lang = parts[0] || 'es';
+        const title = parts.slice(1).join(':');
+        window.open(`https://${lang}.wikipedia.org/wiki/${encodeURIComponent(title)}`, '_blank');
+      }
     });
   }
 
@@ -1187,6 +1500,23 @@ function capitalize(s){
 }
 
 // ============== CHARGE CALC ==============
+function clearTripView(){
+  state.tripActive = false;
+  state.highlightedStops.clear();
+  state.alternativeStops.clear();
+  state.tripPOIs = [];
+  state.trip.result = null;
+  // Limpiar línea de ruta y markers
+  if(routeLine){ map.removeLayer(routeLine); routeLine = null; }
+  if(routeOutline){ map.removeLayer(routeOutline); routeOutline = null; }
+  routeMarkers.forEach(m=>map.removeLayer(m));
+  routeMarkers = [];
+  // Re-aplicar filtros para refrescar markers sin highlights
+  applyFilters();
+  renderTab('trip');
+  toast('Ruta limpiada');
+}
+
 function formatDuration(minutes){
   const h = Math.floor(minutes / 60);
   const m = Math.round(minutes % 60);
@@ -1327,11 +1657,80 @@ async function calculateTrip(){
     ? filtered.slice(0, Math.max(stopsNeeded, Math.min(filtered.length, 5)))
     : (distance > 200 ? filtered.slice(0, 2) : []);
 
+  // Encontrar alternativas para cada parada (cargadores DC dentro de 30km de cada sugerencia)
+  const alternativesByStop = finalStops.map(stop => {
+    const alts = STATIONS
+      .filter(s => s.fast && s.tcomp)
+      .filter(s => !(s.lat === stop.lat && s.lng === stop.lng)) // no incluir la misma
+      .map(s => ({ ...s, distanceFromStop: haversine([stop.lat, stop.lng], [s.lat, s.lng]) }))
+      .filter(s => s.distanceFromStop <= 30) // alternativas a máximo 30km
+      .sort((a,b) => a.distanceFromStop - b.distanceFromStop)
+      .slice(0, 3); // top 3 alternativas
+    return { primary: stop, alternatives: alts };
+  });
+
   state.trip.result = {
     distance, duration, consumption, endSoC, stopsNeeded,
     cost, gasolineCost, savings, savingsPct,
-    suggestedStops: finalStops, origin, dest, routeGeometry
+    suggestedStops: finalStops, origin, dest, routeGeometry,
+    alternativesByStop
   };
+
+  // Activar modo viaje: destacar primarias, marcar alternativas, atenuar el resto
+  state.tripActive = true;
+  state.highlightedStops = new Set(finalStops.map(s => `${s.lat}_${s.lng}`));
+  state.alternativeStops = new Set();
+  alternativesByStop.forEach(g => {
+    g.alternatives.forEach(a => state.alternativeStops.add(`${a.lat}_${a.lng}`));
+  });
+
+  // ============== POIs DE TURISMO EN EL CORREDOR DE LA RUTA ==============
+  state.tripPOIs = [];
+  if(state.tripShowLayers && state.tripShowLayers.size > 0){
+    const layersToInclude = Array.from(state.tripShowLayers).filter(l => l !== 'ev');
+    if(layersToInclude.length > 0 && TOURISM_POIS.length > 0){
+      // Si tenemos geometría real, usar el corredor real; sino aproximar por línea recta
+      const routePath = routeGeometry && routeGeometry.coordinates
+        ? routeGeometry.coordinates.map(c => [c[1], c[0]])  // [lat, lng]
+        : [origin, dest];
+      
+      const pois = TOURISM_POIS
+        .filter(p => layersToInclude.includes(p.cat))
+        .map(p => {
+          // Distancia mínima al corredor (a cualquier segmento de la ruta)
+          let minDist = Infinity;
+          let progress = 0;
+          for(let i = 0; i < routePath.length - 1; i++){
+            const d = distToSegment([p.lat, p.lng], routePath[i], routePath[i+1]);
+            if(d < minDist){
+              minDist = d;
+              progress = i / routePath.length;
+            }
+          }
+          return {
+            ...p,
+            _type: p.cat,
+            detour: minDist,
+            distFromOrigin: progress * distance,
+            progress: progress
+          };
+        })
+        .filter(p => p.detour <= 15)  // máximo 15km de desvío del corredor
+        .sort((a,b) => a.distFromOrigin - b.distFromOrigin);
+      
+      // Limitar para no saturar - máx 30 POIs distribuidos en la ruta
+      state.tripPOIs = pois.slice(0, 30);
+      
+      // Marcar como destacados en el mapa
+      state.tripPOIs.forEach(p => {
+        state.alternativeStops.add(`${p.lat}_${p.lng}`);
+      });
+    }
+  }
+  
+  // Re-renderizar markers con nuevo estilo
+  applyFilters();
+  
   drawRouteLine(origin, dest, finalStops, routeGeometry);
   renderTab('trip');
 
@@ -1536,12 +1935,16 @@ function toggleFav(){
   toast(idx>=0 ? 'Quitado de favoritos' : '⭐ Guardado');
 }
 
-// ============== STATION DETAIL ==============
+// ============== STATION/POI DETAIL ==============
 function showStation(s){
   state.selectedStation = s;
   document.getElementById('tabStation').style.display = 'flex';
   document.querySelectorAll('.sheet-tab').forEach(x=>x.classList.remove('active'));
   document.getElementById('tabStation').classList.add('active');
+  // Cambiar label del tab según tipo
+  document.getElementById('tabStation').textContent = s._type && s._type !== 'ev' 
+    ? `${LAYERS[s._type].icon} Detalle` 
+    : '📍 Estación';
   renderTab('station');
   expandSheet();
   map.flyTo([s.lat, s.lng], Math.max(map.getZoom(), 14), {duration: 0.5});
@@ -1570,14 +1973,23 @@ sheetHandle.addEventListener('click', ()=>{
   if(sheetState==='collapsed') expandSheet(); else collapseSheet();
 });
 
-// ============== QUICK CHIPS ==============
-document.querySelectorAll('.chip').forEach(c=>{
-  c.addEventListener('click', ()=>{
-    document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
-    c.classList.add('active');
-    state.filters.quick = c.dataset.quick;
+// ============== LAYER CHIPS ==============
+document.querySelectorAll('.layer-chip').forEach(c=>{
+  c.addEventListener('click', async ()=>{
+    const layer = c.dataset.layer;
+    if(!layer) return;
+    
+    // Si activamos una capa de turismo y aún no se ha cargado OSM, cargar
+    if(layer !== 'ev' && !state.tourismLoaded && !state.tourismLoading){
+      await loadTourismData();
+    }
+    
+    LAYERS[layer].active = !LAYERS[layer].active;
+    c.classList.toggle('active', LAYERS[layer].active);
+    
     applyFilters();
-    toast(`${state.filtered.length} estaciones`);
+    const total = state.filtered.length;
+    toast(`${total} puntos visibles`);
   });
 });
 
@@ -1595,13 +2007,17 @@ searchInput.addEventListener('input', e=>{
     if(!q || q.length < 2){ searchDropdown.classList.remove('show'); return; }
     const ql = q.toLowerCase();
     const cityMatches = Object.entries(CITIES)
-      .filter(([k])=>k.includes(ql)).slice(0, 5)
+      .filter(([k])=>k.includes(ql)).slice(0, 4)
       .map(([city, coords])=>({type:'city', name:capitalize(city), coords}));
     const stationMatches = STATIONS
       .filter(s=>s.n.toLowerCase().includes(ql) || s.c.toLowerCase().includes(ql) || s.d.toLowerCase().includes(ql))
-      .slice(0, 8)
+      .slice(0, 5)
       .map(s=>({type:'station', station:s}));
-    const all = [...cityMatches, ...stationMatches];
+    const tourismMatches = TOURISM_POIS
+      .filter(p=>p.n.toLowerCase().includes(ql) || (p.c||'').toLowerCase().includes(ql))
+      .slice(0, 5)
+      .map(p=>({type:'tourism', poi:{...p, _type:p.cat}}));
+    const all = [...cityMatches, ...stationMatches, ...tourismMatches];
     if(all.length === 0){
       searchDropdown.innerHTML = '<div class="empty" style="padding:18px">Sin resultados</div>';
       searchDropdown.classList.add('show');
@@ -1613,7 +2029,17 @@ searchInput.addEventListener('input', e=>{
           <div class="sr-icon">🏙️</div>
           <div class="sr-info">
             <div class="sr-name">${m.name}</div>
-            <div class="sr-meta">Ciudad · ${m.coords[0].toFixed(3)}, ${m.coords[1].toFixed(3)}</div>
+            <div class="sr-meta">Ciudad</div>
+          </div>
+        </div>`;
+      } else if(m.type === 'tourism'){
+        const p = m.poi;
+        const layer = LAYERS[p.cat];
+        return `<div class="search-result" data-idx="${i}">
+          <div class="sr-icon" style="background:${layer.color};color:#fff">${layer.icon}</div>
+          <div class="sr-info">
+            <div class="sr-name">${p.n}</div>
+            <div class="sr-meta">${layer.label.replace(/^[^\s]+\s/,'')}${p.c ? ' · ' + p.c : ''}</div>
           </div>
         </div>`;
       } else {
@@ -1634,9 +2060,12 @@ searchInput.addEventListener('input', e=>{
         if(m.type === 'city'){
           map.flyTo(m.coords, 12, {duration:0.8});
           toast(`📍 ${m.name}`);
+        } else if(m.type === 'tourism'){
+          map.flyTo([m.poi.lat, m.poi.lng], 16, {duration:0.6});
+          showStation(m.poi);
         } else {
           map.flyTo([m.station.lat, m.station.lng], 16, {duration:0.6});
-          showStation(m.station);
+          showStation({...m.station, _type:'ev'});
         }
         searchDropdown.classList.remove('show');
         searchInput.value = '';
@@ -1911,7 +2340,174 @@ function toast(msg){
   setTimeout(()=>t.classList.remove('show'), 2500);
 }
 
+// ============== TOURISM DATA LOADING ==============
+async function loadTourismData(){
+  if(state.tourismLoaded || state.tourismLoading) return;
+  state.tourismLoading = true;
+  
+  // Mostrar loading toast
+  toast('🌐 Descargando puntos de turismo de OpenStreetMap... (~10-30s)');
+  
+  // Bbox de Chile aproximado (continental + Chiloé)
+  // Lat: -56 a -17.5  |  Lng: -76 a -66
+  // Para no sobrecargar Overpass, dividimos por zonas
+  const queries = [
+    // Hoteles + alojamiento
+    `[out:json][timeout:60];
+     (node["tourism"="hotel"](-56,-76,-17.5,-66);
+      node["tourism"="hostel"](-56,-76,-17.5,-66);
+      node["tourism"="guest_house"](-56,-76,-17.5,-66);
+      node["tourism"="apartment"](-56,-76,-17.5,-66););
+     out tags center;`,
+    // Restaurants + cafés
+    `[out:json][timeout:60];
+     (node["amenity"="restaurant"](-56,-76,-17.5,-66);
+      node["amenity"="cafe"](-56,-76,-17.5,-66););
+     out tags center;`,
+    // Sitios históricos / culturales
+    `[out:json][timeout:60];
+     (node["historic"](-56,-76,-17.5,-66);
+      node["tourism"="museum"](-56,-76,-17.5,-66);
+      node["tourism"="artwork"](-56,-76,-17.5,-66););
+     out tags center;`,
+    // Naturaleza (miradores, parques)
+    `[out:json][timeout:60];
+     (node["tourism"="viewpoint"](-56,-76,-17.5,-66);
+      node["leisure"="park"](-56,-76,-17.5,-66);
+      node["natural"="peak"](-56,-76,-17.5,-66);
+      node["boundary"="national_park"](-56,-76,-17.5,-66););
+     out tags center;`,
+    // Atracciones genéricas
+    `[out:json][timeout:60];
+     (node["tourism"="attraction"](-56,-76,-17.5,-66);
+      node["tourism"="theme_park"](-56,-76,-17.5,-66);
+      node["tourism"="zoo"](-56,-76,-17.5,-66););
+     out tags center;`,
+    // Astronomía: observatorios y planetarios
+    `[out:json][timeout:60];
+     (node["man_made"="telescope"](-56,-76,-17.5,-66);
+      node["amenity"="planetarium"](-56,-76,-17.5,-66);
+      node["historic"="observatory"](-56,-76,-17.5,-66);
+      node["tourism"="planetarium"](-56,-76,-17.5,-66);
+      way["man_made"="observatory"](-56,-76,-17.5,-66););
+     out tags center;`
+  ];
+  
+  // Endpoints alternativos (rotamos si uno falla)
+  const endpoints = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://lz4.overpass-api.de/api/interpreter',
+    'https://overpass.openstreetmap.fr/api/interpreter'
+  ];
+  
+  const allResults = [];
+  
+  for(let i = 0; i < queries.length; i++){
+    const query = queries[i];
+    let success = false;
+    
+    for(const endpoint of endpoints){
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: 'data=' + encodeURIComponent(query)
+        });
+        if(!res.ok) continue;
+        const data = await res.json();
+        if(data.elements){
+          allResults.push({queryIdx: i, elements: data.elements});
+          success = true;
+          break;
+        }
+      } catch(e){
+        console.warn(`Endpoint ${endpoint} failed:`, e);
+      }
+    }
+    
+    if(!success){
+      console.warn(`Query ${i} failed on all endpoints`);
+    }
+    
+    // Pequeña pausa entre queries para no abusar del API
+    if(i < queries.length - 1) await new Promise(r => setTimeout(r, 1000));
+  }
+  
+  // Procesar resultados
+  TOURISM_POIS = [];
+  const categoryMap = ['hotel','restaurant','historic','nature','attraction','astro'];
+  
+  allResults.forEach(({queryIdx, elements}) => {
+    const cat = categoryMap[queryIdx];
+    elements.forEach(el => {
+      const lat = el.lat || (el.center && el.center.lat);
+      const lng = el.lon || (el.center && el.center.lon);
+      if(!lat || !lng) return;
+      const tags = el.tags || {};
+      const name = tags.name || tags['name:es'] || tags.amenity || tags.tourism || tags.historic || 'Sin nombre';
+      
+      TOURISM_POIS.push({
+        n: name.substring(0, 80),
+        c: tags['addr:city'] || tags['addr:suburb'] || '',
+        d: tags['addr:full'] || tags['addr:street'] || '',
+        lat: Math.round(lat * 100000) / 100000,
+        lng: Math.round(lng * 100000) / 100000,
+        cat: cat,
+        type: tags.tourism || tags.amenity || tags.historic || tags.natural || tags.leisure || '',
+        phone: tags.phone || tags['contact:phone'] || '',
+        website: tags.website || tags['contact:website'] || '',
+        hours: tags.opening_hours || '',
+        cuisine: tags.cuisine || '',
+        stars: tags.stars || '',
+        wikidata: tags.wikidata || '',
+        wiki: tags.wikipedia || ''
+      });
+    });
+  });
+  
+  // Deduplicar puntos turismo cercanos (mismo nombre + < 100m)
+  const dedup = [];
+  const seen = new Set();
+  TOURISM_POIS.forEach(p => {
+    const key = `${p.n.toLowerCase()}_${p.cat}_${Math.round(p.lat*1000)}_${Math.round(p.lng*1000)}`;
+    if(!seen.has(key)){ seen.add(key); dedup.push(p); }
+  });
+  TOURISM_POIS = dedup;
+  
+  // Guardar en localStorage para próxima vez (cache 7 días)
+  try {
+    localStorage.setItem('tourism_pois', JSON.stringify(TOURISM_POIS));
+    localStorage.setItem('tourism_loaded_at', Date.now());
+  } catch(e){ console.warn('No se pudo cachear:', e); }
+  
+  state.tourismLoaded = true;
+  state.tourismLoading = false;
+  toast(`✓ ${TOURISM_POIS.length} puntos turísticos cargados`);
+  applyFilters();
+}
+
+// Intentar cargar desde cache primero
+function loadCachedTourism(){
+  try {
+    const cached = localStorage.getItem('tourism_pois');
+    const loadedAt = localStorage.getItem('tourism_loaded_at');
+    if(cached && loadedAt){
+      const age = Date.now() - parseInt(loadedAt);
+      const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 días
+      if(age < maxAge){
+        TOURISM_POIS = JSON.parse(cached);
+        state.tourismLoaded = true;
+        console.log(`Tourism cache: ${TOURISM_POIS.length} puntos (edad: ${Math.round(age/1000/3600)}h)`);
+        return true;
+      }
+    }
+  } catch(e){ console.warn('Cache parse error:', e); }
+  return false;
+}
+
 // ============== INIT ==============
+loadCachedTourism();
 applyFilters();
 renderTab('filters');
 toast(`${STATIONS.length} estaciones cargadas`);
@@ -1919,20 +2515,40 @@ toast(`${STATIONS.length} estaciones cargadas`);
 // ============== PWA: SERVICE WORKER & INSTALL ==============
 let deferredInstallPrompt = null;
 
-// Registrar Service Worker (solo si HTTPS o localhost)
+// Registrar Service Worker con auto-update agresivo
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js')
       .then(reg => {
         console.log('SW registrado:', reg.scope);
-        // Detectar updates
+        
+        // Forzar check de actualización al cargar
+        reg.update();
+        
+        // Re-chequear updates cada 60 segundos
+        setInterval(() => reg.update(), 60000);
+        
+        // Detectar updates y aplicar inmediatamente
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              toast('🔄 Nueva versión disponible. Recarga la app.');
+              // Hay nueva versión: avisar y auto-recargar
+              toast('🔄 Nueva versión detectada. Recargando...');
+              setTimeout(() => {
+                newWorker.postMessage({type: 'SKIP_WAITING'});
+                window.location.reload();
+              }, 1500);
             }
           });
+        });
+        
+        // Si el controller cambia, recargar
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
         });
       })
       .catch(err => console.warn('SW falló:', err));
