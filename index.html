@@ -605,7 +605,7 @@ const state = {
   trip: {
     origin:null, originText:'', originCoords:null,
     dest:null, destText:'', destCoords:null,
-    startSoC:90, endSoC:15, result:null
+    startSoC:90, endSoC:15, safety:'safe', result:null
   },
   satellite: false,
   theme: localStorage.getItem('ev_theme') || 'light'
@@ -885,7 +885,24 @@ function renderTrip(){
       </div>
       <div class="field">
         <label>SoC mín. llegada: <b>${t.endSoC}%</b></label>
-        <input type="range" min="5" max="40" step="5" value="${t.endSoC}" id="endSoC" style="width:100%">
+        <input type="range" min="5" max="80" step="5" value="${t.endSoC}" id="endSoC" style="width:100%">
+      </div>
+    </div>
+    <div class="field">
+      <label>🛡️ Modo de seguridad entre paradas</label>
+      <div class="seg" id="safetySeg">
+        ${[
+          ['minimal', '⚠️ Mínimo', '10%'],
+          ['normal', '✅ Normal', '20%'],
+          ['safe', '🛡️ Seguro', '30%'],
+          ['extreme', '🚨 Extremo', '40%']
+        ].map(([v, l, pct]) => 
+          `<button class="${(t.safety||'safe') === v ? 'active' : ''}" data-safety="${v}">${l}<br><small style="opacity:.7;font-size:9px">${pct}</small></button>`
+        ).join('')}
+      </div>
+      <div class="help">
+        <b>Margen mínimo entre paradas y llegada al destino.</b><br>
+        Un margen mayor = más paradas pero menos riesgo si un cargador no funciona o está ocupado.
       </div>
     </div>
     <button class="btn btn-primary" id="calcTrip" style="width:100%">Calcular ruta</button>
@@ -916,9 +933,17 @@ function renderTripResult(r){
       <span class="trip-stat-val ${r.endSoC<state.trip.endSoC?'danger':r.endSoC<25?'warning':'highlight'}">${r.endSoC.toFixed(0)}%</span>
     </div>
     <div class="trip-stat">
-      <span class="trip-stat-label">Paradas DC necesarias</span>
-      <span class="trip-stat-val">${r.stopsNeeded}</span>
+      <span class="trip-stat-label">Paradas DC sugeridas</span>
+      <span class="trip-stat-val">${r.stopsActual !== undefined ? r.stopsActual : r.stopsNeeded}</span>
     </div>
+    ${r.safetyMode ? `<div class="trip-stat">
+      <span class="trip-stat-label">🛡️ Modo seguridad</span>
+      <span class="trip-stat-val" style="font-size:12px">${({minimal:'⚠️ Mínimo',normal:'✅ Normal',safe:'🛡️ Seguro',extreme:'🚨 Extremo'})[r.safetyMode]} (${(r.safetyBuffer*100).toFixed(0)}%)</span>
+    </div>` : ''}
+    ${r.minSoCBetweenStops !== undefined ? `<div class="trip-stat">
+      <span class="trip-stat-label">SoC mínimo entre paradas</span>
+      <span class="trip-stat-val" style="color:${r.minSoCBetweenStops < 0.15 ? 'var(--red)' : r.minSoCBetweenStops < 0.25 ? 'var(--yellow)' : 'var(--green)'}">${(r.minSoCBetweenStops*100).toFixed(0)}%</span>
+    </div>` : ''}
     <div class="trip-stat">
       <span class="trip-stat-label">Costo eléctrico (mix DC/casa)</span>
       <span class="trip-stat-val highlight">$${r.cost.toLocaleString('es-CL')} CLP</span>
@@ -1316,6 +1341,14 @@ function attachHandlers(tab){
       sa.parentElement.querySelector('label b').textContent = state.trip.startSoC+'%'; });
     ea?.addEventListener('input', e=>{ state.trip.endSoC = +e.target.value;
       ea.parentElement.querySelector('label b').textContent = state.trip.endSoC+'%'; });
+    
+    document.querySelectorAll('[data-safety]').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        document.querySelectorAll('[data-safety]').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        state.trip.safety = b.dataset.safety;
+      });
+    });
 
     // Autocomplete origen
     const oInput = document.getElementById('tripOrigin');
@@ -1676,6 +1709,35 @@ async function calculateTrip(){
   const savings = gasolineCost - cost;
   const savingsPct = Math.round((savings / gasolineCost) * 100);
 
+  // ============== LÓGICA INTELIGENTE DE PARADAS CON SAFETY BUFFER ==============
+  const safetyBuffers = {
+    minimal: 0.10, normal: 0.20, safe: 0.30, extreme: 0.40
+  };
+  const safetyMode = state.trip.safety || 'safe';
+  const safetyBuffer = safetyBuffers[safetyMode];
+  
+  // SoC mínimo efectivo = el mayor entre lo que pidió el user y el buffer del modo
+  const effectiveMinSoC = Math.max(state.trip.endSoC / 100, safetyBuffer);
+  const effectiveMinEnergy = TESLA.battery * effectiveMinSoC;
+  
+  // Recalcular paradas con safety
+  const dcChargeTo = 0.80;
+  const energyPerStop = TESLA.battery * (dcChargeTo - effectiveMinSoC);
+  const stopsActual = remainingEnergy < effectiveMinEnergy
+    ? Math.ceil((consumption - (startEnergy - effectiveMinEnergy)) / energyPerStop)
+    : 0;
+  
+  // km crítico con safety buffer aplicado
+  const kmCritico = (startEnergy - effectiveMinEnergy) / TESLA.consHwy;
+  
+  debugLog(`🛡️ Modo: ${safetyMode} (buffer ${(safetyBuffer*100).toFixed(0)}%) | SoC mín efectivo: ${(effectiveMinSoC*100).toFixed(0)}%`);
+  debugLog(`Km crítico: ${kmCritico.toFixed(0)}km | Paradas con safety: ${stopsActual}`);
+  
+  const kmFirstStopMin = Math.max(50, kmCritico - 100);
+  const kmFirstStopMax = Math.max(80, kmCritico - 10);
+  
+  debugLog(`Análisis: SoC inicial ${state.trip.startSoC}%, km crítico ${kmCritico.toFixed(0)}, paradas necesarias: ${stopsNeeded}`);
+  
   const candidates = STATIONS
     .filter(s=>s.fast && s.tcomp)
     .map(s=>{
@@ -1684,21 +1746,46 @@ async function calculateTrip(){
       const dToDest = haversine([s.lat, s.lng], dest) * 1.25;
       return { ...s, detour:dDest, distFromOrigin:dFromOrigin, distToDest:dToDest, totalDist:dFromOrigin+dToDest };
     })
-    .filter(s=>s.detour < 25 && s.distFromOrigin > 30 && s.distFromOrigin < distance - 30 && s.totalDist < distance * 1.3)
-    .sort((a,b)=>a.distFromOrigin - b.distFromOrigin);
+    .filter(s => 
+      s.detour < 25 &&                                // dentro del corredor (<25km)
+      s.distFromOrigin >= kmFirstStopMin &&           // NO antes del km mínimo (zona donde aún tienes batería)
+      s.distFromOrigin <= distance - 30 &&            // tampoco a <30km del destino (no tiene sentido cargar al final)
+      s.totalDist < distance * 1.3                    // no demasiado fuera de ruta
+    )
+    .sort((a,b) => a.distFromOrigin - b.distFromOrigin);
+  
+  debugLog(`Candidatos válidos: ${candidates.length} (entre km ${kmFirstStopMin.toFixed(0)} y ${(distance-30).toFixed(0)})`);
 
-  // Espaciar paradas cada 200-300km idealmente
-  const filtered = [];
-  let lastDist = 0;
-  for(const s of candidates){
-    if(filtered.length === 0 || s.distFromOrigin - lastDist >= 150){
-      filtered.push(s);
-      lastDist = s.distFromOrigin;
+  // Construir lista de paradas con stopsActual (incluye safety buffer)
+  const finalStops = [];
+  if(stopsActual > 0){
+    // PRIMERA PARADA: la mejor opción ANTES del km crítico
+    const firstStopCandidates = candidates.filter(s => s.distFromOrigin <= kmFirstStopMax);
+    if(firstStopCandidates.length > 0){
+      // Elegir la más cercana al km crítico (maximizar autonomía usada)
+      // Pero también priorizar potencia alta (DC ultra rápida)
+      const sorted = firstStopCandidates
+        .map(s => ({...s, score: s.pc * 10 - Math.abs(s.distFromOrigin - kmFirstStopMax) }))
+        .sort((a,b) => b.score - a.score);
+      finalStops.push(sorted[0]);
+      debugLog(`Primera parada: ${sorted[0].n} a ${sorted[0].distFromOrigin.toFixed(0)}km`);
+    }
+    
+    // PARADAS SIGUIENTES (si necesitas más de 1)
+    let lastKm = finalStops.length > 0 ? finalStops[0].distFromOrigin : 0;
+    for(let i = 1; i < stopsActual; i++){
+      // Próxima parada ~250km después de la última
+      const nextTarget = lastKm + 250;
+      const nextCandidates = candidates
+        .filter(s => s.distFromOrigin > lastKm + 100 && s.distFromOrigin <= lastKm + 320)
+        .sort((a,b) => Math.abs(a.distFromOrigin - nextTarget) - Math.abs(b.distFromOrigin - nextTarget));
+      if(nextCandidates.length > 0){
+        finalStops.push(nextCandidates[0]);
+        lastKm = nextCandidates[0].distFromOrigin;
+        debugLog(`Parada ${i+1}: ${nextCandidates[0].n} a ${lastKm.toFixed(0)}km`);
+      }
     }
   }
-  const finalStops = stopsNeeded > 0
-    ? filtered.slice(0, Math.max(stopsNeeded, Math.min(filtered.length, 5)))
-    : (distance > 200 ? filtered.slice(0, 2) : []);
 
   // Encontrar alternativas para cada parada (cargadores DC dentro de 30km de cada sugerencia)
   const alternativesByStop = finalStops.map(stop => {
@@ -1713,10 +1800,12 @@ async function calculateTrip(){
   });
 
   state.trip.result = {
-    distance, duration, consumption, endSoC, stopsNeeded,
+    distance, duration, consumption, endSoC, stopsNeeded, stopsActual,
     cost, gasolineCost, savings, savingsPct,
     suggestedStops: finalStops, origin, dest, routeGeometry,
-    alternativesByStop
+    alternativesByStop,
+    safetyMode, safetyBuffer,
+    minSoCBetweenStops: effectiveMinSoC
   };
 
   // Activar modo viaje: destacar primarias, marcar alternativas, atenuar el resto
