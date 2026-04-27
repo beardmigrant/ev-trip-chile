@@ -750,14 +750,46 @@ function makeIcon(s){
   });
 }
 
+// Marker layer SEPARADO del cluster para paradas sugeridas (siempre visibles, sin agrupar)
+let suggestedMarkersLayer = null;
+
 function buildMarkers(list){
   cluster.clearLayers();
-  const markers = list.map(s=>{
-    const m = L.marker([s.lat, s.lng], { icon: makeIcon(s) });
+  // Limpiar layer de paradas sugeridas anterior
+  if(suggestedMarkersLayer){
+    map.removeLayer(suggestedMarkersLayer);
+    suggestedMarkersLayer = null;
+  }
+  
+  const regularMarkers = [];
+  const suggestedMarkers = [];
+  
+  list.forEach(s => {
+    const key = `${s.lat}_${s.lng}`;
+    const isHighlighted = state.highlightedStops.has(key);
+    const m = L.marker([s.lat, s.lng], { 
+      icon: makeIcon(s),
+      // z-index alto para sugeridos
+      zIndexOffset: isHighlighted ? 10000 : (state.alternativeStops.has(key) ? 500 : 0)
+    });
     m.on('click', ()=> showStation(s));
-    return m;
+    
+    // Las paradas SUGERIDAS van fuera del cluster (siempre visibles)
+    if(isHighlighted){
+      suggestedMarkers.push(m);
+    } else {
+      regularMarkers.push(m);
+    }
   });
-  cluster.addLayers(markers);
+  
+  // Markers regulares dentro del cluster
+  cluster.addLayers(regularMarkers);
+  
+  // Markers sugeridos como layer separado (sin clustering)
+  if(suggestedMarkers.length > 0){
+    suggestedMarkersLayer = L.layerGroup(suggestedMarkers).addTo(map);
+    debugLog(`🟢 Markers sugeridos visibles (fuera de cluster): ${suggestedMarkers.length}`);
+  }
 }
 
 map.addLayer(cluster);
@@ -1623,6 +1655,7 @@ function clearTripView(){
   // Limpiar línea de ruta y markers
   if(routeLine){ map.removeLayer(routeLine); routeLine = null; }
   if(routeOutline){ map.removeLayer(routeOutline); routeOutline = null; }
+  if(suggestedMarkersLayer){ map.removeLayer(suggestedMarkersLayer); suggestedMarkersLayer = null; }
   routeMarkers.forEach(m=>map.removeLayer(m));
   routeMarkers = [];
   // Re-aplicar filtros para refrescar markers sin highlights
@@ -1852,30 +1885,57 @@ async function calculateTrip(){
   
   debugLog(`Análisis: SoC inicial ${state.trip.startSoC}%, km crítico ${kmCritico.toFixed(0)}, paradas necesarias: ${stopsNeeded}`);
   
+  // CRÍTICO: Calcular el detour contra la GEOMETRÍA REAL de la ruta (no línea recta)
+  // La ruta real sigue la Ruta 5 que hace curvas; usar línea recta excluye cargadores válidos.
+  
+  // Submuestrear la ruta a ~100 puntos para performance (suficiente para Chile)
+  let routePathForCandidates = null;
+  if(routeGeometry && routeGeometry.coordinates && routeGeometry.coordinates.length > 0){
+    const fullPath = routeGeometry.coordinates.map(c => [c[1], c[0]]);
+    const step = Math.max(1, Math.floor(fullPath.length / 100));
+    routePathForCandidates = [];
+    for(let i = 0; i < fullPath.length; i += step) routePathForCandidates.push(fullPath[i]);
+    if(routePathForCandidates[routePathForCandidates.length - 1] !== fullPath[fullPath.length - 1]){
+      routePathForCandidates.push(fullPath[fullPath.length - 1]);
+    }
+    debugLog(`Corredor para candidatos: ${routePathForCandidates.length} segmentos (de ${fullPath.length} puntos OSRM)`);
+  } else {
+    routePathForCandidates = [origin, dest];
+    debugLog(`⚠ Sin geometría OSRM, usando línea recta`);
+  }
+  
+  // Calcular detour de cada cargador contra el corredor real, y posición a lo largo de la ruta
   const candidates = STATIONS
     .filter(s=>s.fast && s.tcomp)
     .map(s=>{
-      const dDest = distToSegment([s.lat, s.lng], origin, dest);
-      const dFromOrigin = haversine(origin, [s.lat, s.lng]) * 1.25;
-      const dToDest = haversine([s.lat, s.lng], dest) * 1.25;
-      return { ...s, detour:dDest, distFromOrigin:dFromOrigin, distToDest:dToDest, totalDist:dFromOrigin+dToDest };
+      // Distancia mínima a cualquier segmento del corredor
+      let minDetour = Infinity;
+      let bestSegIdx = 0;
+      for(let i = 0; i < routePathForCandidates.length - 1; i++){
+        const d = distToSegment([s.lat, s.lng], routePathForCandidates[i], routePathForCandidates[i+1]);
+        if(d < minDetour){ minDetour = d; bestSegIdx = i; }
+      }
+      // Posición a lo largo de la ruta (basada en el segmento más cercano)
+      const progress = bestSegIdx / Math.max(1, routePathForCandidates.length - 1);
+      const dFromOrigin = progress * distance;
+      return { ...s, detour: minDetour, distFromOrigin: dFromOrigin, progress };
     })
     .filter(s => 
-      s.detour < 25 &&                                // dentro del corredor (<25km)
-      s.distFromOrigin >= kmFirstStopMin &&           // NO antes del km mínimo (zona donde aún tienes batería)
-      s.distFromOrigin <= distance - 30 &&            // tampoco a <30km del destino (no tiene sentido cargar al final)
-      s.totalDist < distance * 1.3                    // no demasiado fuera de ruta
+      s.detour < 30 &&                          // dentro del corredor real (<30km)
+      s.distFromOrigin >= kmFirstStopMin &&     // no antes del km mínimo
+      s.distFromOrigin <= distance - 30         // no a <30km del destino
     )
     .sort((a,b) => a.distFromOrigin - b.distFromOrigin);
   
-  debugLog(`Candidatos válidos: ${candidates.length} (entre km ${kmFirstStopMin.toFixed(0)} y ${(distance-30).toFixed(0)})`);
+  debugLog(`Candidatos válidos (corredor real): ${candidates.length} entre km ${kmFirstStopMin.toFixed(0)} y ${(distance-30).toFixed(0)}`);
+  if(candidates.length > 0){
+    debugLog(`  Primeros 5: ${candidates.slice(0,5).map(c => `${c.n.substring(0,30)} (km${c.distFromOrigin.toFixed(0)})`).join(' | ')}`);
+  }
 
   // ============== BÚSQUEDA DE CARGADOR EN CADA km OBJETIVO ==============
-  // Ya tenemos kmStops calculado correctamente por el modelo de tramos.
-  // Para cada km objetivo, buscamos el mejor cargador disponible.
-  //
-  // CRÍTICO: cada parada debe estar ANTES de su km objetivo (no después)
-  // porque si está después significa que llegamos al cargador con MENOS de minSoC%
+  // Buscar en ventana ±150km del target, eligiendo el mejor por proximidad + potencia
+  // Permitir cargadores que estén un poco DESPUÉS del target (no es catastrófico, solo
+  // significa llegar con un poco menos de SoC que el ideal).
   
   const finalStops = [];
   const usedStops = new Set();
@@ -1883,11 +1943,9 @@ async function calculateTrip(){
   for(let i = 0; i < kmStops.length; i++){
     const target = kmStops[i];
     
-    // Ventana de búsqueda: hasta el target (no más allá), pero buscar atrás hasta 80km
-    // Excepción para la última parada: puede estar un poco después si no hay opción antes
-    const isLast = i === kmStops.length - 1;
-    const minKm = Math.max(20, target - 80);
-    const maxKm = isLast ? target + 30 : target;
+    // Ventana amplia: ±150km del target (asegura encontrar algo en Chile)
+    const minKm = Math.max(20, target - 150);
+    const maxKm = target + 150;
     
     const windowCandidates = candidates
       .filter(s => 
@@ -1897,14 +1955,11 @@ async function calculateTrip(){
       )
       .map(s => ({
         ...s,
-        // Score: priorizar cerca del target, alta potencia, bajo desvío
-        // PENALIZAR cargadores que estén DESPUÉS del target (porque significaría
-        // llegar con menos batería que minSoC)
+        // Score balanceado:
         score: 
-          -Math.abs(s.distFromOrigin - target) * 3   // cerca del target (peso 3)
-          + Math.min(s.pc, 200) * 0.3                // potencia (peso 0.3, cap 200kW)
-          - s.detour * 2                             // desvío negativo (peso 2)
-          + (s.distFromOrigin <= target ? 20 : -30)  // bonus si está antes, penalty si está después
+          -Math.abs(s.distFromOrigin - target) * 1.5   // cerca del target (peso 1.5)
+          + Math.min(s.pc, 200) * 0.4                  // potencia (peso 0.4)
+          - s.detour * 2                               // penalizar desvío (peso 2)
       }))
       .sort((a,b) => b.score - a.score);
     
@@ -1912,13 +1967,13 @@ async function calculateTrip(){
       const chosen = windowCandidates[0];
       finalStops.push(chosen);
       usedStops.add(`${chosen.lat}_${chosen.lng}`);
-      debugLog(`Parada ${i+1}: ${chosen.n} a ${chosen.distFromOrigin.toFixed(0)}km (target ${target.toFixed(0)}km, ${chosen.pc}kW, desvío ${chosen.detour.toFixed(1)}km)`);
+      debugLog(`✓ Parada ${i+1}: ${chosen.n} a ${chosen.distFromOrigin.toFixed(0)}km (target ${target.toFixed(0)}km, ${chosen.pc}kW, desvío ${chosen.detour.toFixed(1)}km)`);
     } else {
-      debugLog(`⚠️ Parada ${i+1}: SIN cargadores entre km ${minKm.toFixed(0)} y ${maxKm.toFixed(0)} (target ${target.toFixed(0)}km)`);
-      // Buscar más lejos como último recurso
+      // Búsqueda más amplia: ±300km
       const farCandidates = candidates
         .filter(s => 
-          Math.abs(s.distFromOrigin - target) <= 150 &&
+          s.distFromOrigin >= Math.max(20, target - 300) &&
+          s.distFromOrigin <= target + 300 &&
           !usedStops.has(`${s.lat}_${s.lng}`)
         )
         .sort((a,b) => Math.abs(a.distFromOrigin - target) - Math.abs(b.distFromOrigin - target));
@@ -1926,10 +1981,14 @@ async function calculateTrip(){
         const chosen = farCandidates[0];
         finalStops.push(chosen);
         usedStops.add(`${chosen.lat}_${chosen.lng}`);
-        debugLog(`  Fallback parada ${i+1}: ${chosen.n} a ${chosen.distFromOrigin.toFixed(0)}km (lejos del target ${target.toFixed(0)}km)`);
+        debugLog(`⚠ Parada ${i+1} (fallback): ${chosen.n} a ${chosen.distFromOrigin.toFixed(0)}km (target era ${target.toFixed(0)}km)`);
+      } else {
+        debugLog(`❌ Parada ${i+1}: NO se encontró cargador cerca de km ${target.toFixed(0)}`);
       }
     }
   }
+  
+  debugLog(`📍 Total cargadores encontrados: ${finalStops.length}/${kmStops.length}`);
 
   // Encontrar alternativas para cada parada (cargadores DC dentro de 30km de cada sugerencia)
   const alternativesByStop = finalStops.map(stop => {
