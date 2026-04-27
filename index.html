@@ -296,7 +296,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);
 .stop-card{background:var(--bg);border:1px solid var(--line);border-radius:11px;
   padding:11px;display:flex;gap:10px;align-items:center;cursor:pointer;
   transition:all .15s}
-.stop-card.primary-stop{border-left:3px solid #10b981}
+.stop-card.primary-stop{border-left:4px solid #10b981;background:linear-gradient(90deg,rgba(16,185,129,.06) 0%,transparent 30%)}
 .stop-card:hover{border-color:#0066cc}
 .stop-num{width:26px;height:26px;border-radius:50%;background:#10b981;color:#fff;
   display:grid;place-items:center;font-size:12px;font-weight:700;flex-shrink:0}
@@ -328,7 +328,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);
 .legend-row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
 .legend-item{display:flex;align-items:center;gap:5px}
 .leg-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
-.leg-primary{background:#0066cc;box-shadow:0 0 0 2px #10b981}
+.leg-primary{background:#10b981;box-shadow:0 0 0 2px #10b981,0 0 6px rgba(16,185,129,.5)}
 .leg-alt{background:#0066cc;box-shadow:0 0 0 2px #f59e0b}
 .leg-dim{background:#94a3b8;opacity:.4}
 
@@ -376,11 +376,40 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);
 .cm{width:30px;height:36px;position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));transition:all .3s ease}
 .cm-pin{width:30px;height:30px;border-radius:50% 50% 50% 0;
   transform:rotate(-45deg);display:grid;place-items:center;border:2px solid #fff;transition:all .3s ease}
-.cm-highlighted{animation:bounce-in .5s ease-out,glow-green 2s ease-in-out infinite alternate}
-.cm-highlighted .cm-pin{border:3px solid #10b981 !important}
-.cm-alternative .cm-pin{border:2.5px solid #f59e0b !important}
-@keyframes bounce-in{0%{transform:scale(.3) translateY(-20px);opacity:0}60%{transform:scale(1.15) translateY(0);opacity:1}100%{transform:scale(1)}}
-@keyframes glow-green{from{filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}to{filter:drop-shadow(0 0 8px rgba(16,185,129,.7)) drop-shadow(0 2px 6px rgba(0,0,0,.3))}}
+/* PARADA SUGERIDA - verde brillante, animada, prominente */
+.cm-suggested{
+  position:relative;z-index:1000;
+  animation:bounce-in .55s cubic-bezier(.34,1.56,.64,1),
+            glow-green-strong 1.8s ease-in-out infinite alternate;
+  filter:drop-shadow(0 4px 12px rgba(0,0,0,.5))
+}
+.cm-pin-suggested{
+  background:linear-gradient(135deg,#10b981 0%,#059669 100%) !important;
+  border:4px solid #ffffff !important;
+  border-radius:50% 50% 50% 0 !important;
+  transform:rotate(-45deg);
+  display:grid;place-items:center;
+  box-shadow:
+    0 0 0 4px rgba(16,185,129,.35),
+    0 0 24px rgba(16,185,129,.6),
+    0 6px 20px rgba(0,0,0,.4) !important;
+}
+.cm-pin-suggested .cm-icon{
+  transform:rotate(45deg);
+  color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.4);
+}
+@keyframes bounce-in{
+  0%{transform:scale(.3) translateY(-30px);opacity:0}
+  60%{transform:scale(1.18) translateY(0);opacity:1}
+  100%{transform:scale(1)}
+}
+@keyframes glow-green-strong{
+  from{filter:drop-shadow(0 0 6px rgba(16,185,129,.5)) drop-shadow(0 4px 8px rgba(0,0,0,.4))}
+  to{filter:drop-shadow(0 0 16px rgba(16,185,129,.9)) drop-shadow(0 4px 12px rgba(0,0,0,.4))}
+}
+
+.cm-alternative{position:relative;z-index:600}
 .cm-icon{transform:rotate(45deg);color:#fff;font-size:11px;font-weight:700}
 .cm.fast::after{content:"⚡";position:absolute;top:-4px;right:-4px;width:14px;height:14px;
   background:#f59e0b;border-radius:50%;display:grid;place-items:center;font-size:8px;
@@ -668,7 +697,6 @@ function makeIcon(s){
     color = OP_COLORS[s.op] || OP_COLORS['Otro'];
     initials = OP_INITIALS[s.op] || '?';
   } else {
-    // POI turismo
     const layer = LAYERS[s._type];
     color = layer ? layer.color : '#64748b';
     initials = layer ? layer.icon : '?';
@@ -678,30 +706,47 @@ function makeIcon(s){
   const isAlternative = state.alternativeStops.has(key);
   const isDimmed = state.tripActive && !isHighlighted && !isAlternative;
   
-  let size = s.fast ? 36 : 30;
-  let cls = s.fast ? 'fast' : '';
-  let opacity = 1;
-  let extraStyle = '';
-  let extraClass = '';
-  
+  // PARADA SUGERIDA: marcador especial verde con estrella, GRANDE y prominente
   if(isHighlighted){
-    size = 50; // más grande
-    extraClass = ' cm-highlighted';
-    extraStyle = 'box-shadow:0 0 0 4px rgba(16,185,129,.4),0 4px 16px rgba(0,0,0,.5);z-index:1000';
-  } else if(isAlternative){
-    size = 38;
-    extraClass = ' cm-alternative';
-    extraStyle = 'box-shadow:0 0 0 3px rgba(245,158,11,.5),0 3px 10px rgba(0,0,0,.4)';
-  } else if(isDimmed){
-    opacity = 0.25;
+    // Buscar el índice de esta parada en la lista (para numerarla)
+    const stopIdx = state.trip.result?.suggestedStops?.findIndex(
+      x => x.lat === s.lat && x.lng === s.lng
+    );
+    const num = stopIdx >= 0 ? (stopIdx + 1) : '⚡';
+    
+    return L.divIcon({
+      className: 'custom-marker',
+      html: `<div class="cm cm-suggested" style="width:56px;height:64px">
+        <div class="cm-pin cm-pin-suggested" style="width:52px;height:52px">
+          <span class="cm-icon" style="font-size:18px;font-weight:800">${num}</span>
+        </div>
+      </div>`,
+      iconSize: [56, 64], iconAnchor: [28, 64]
+    });
   }
   
+  // ALTERNATIVA: borde naranja sin cambiar color base
+  if(isAlternative){
+    return L.divIcon({
+      className: 'custom-marker',
+      html: `<div class="cm cm-alternative" style="width:38px;height:44px">
+        <div class="cm-pin" style="background:${color};width:38px;height:38px;box-shadow:0 0 0 3px rgba(245,158,11,.7),0 3px 10px rgba(0,0,0,.4);border:3px solid #fff"><span class="cm-icon" style="font-size:13px">${initials}</span></div>
+      </div>`,
+      iconSize: [38, 44], iconAnchor: [19, 44]
+    });
+  }
+  
+  // RESTO: tamaño normal, atenuado si hay viaje activo
+  const size = s.fast ? 36 : 30;
+  const cls = s.fast ? 'fast' : '';
+  const opacity = isDimmed ? 0.18 : 1;
+  
   return L.divIcon({
-    className:'custom-marker',
-    html:`<div class="cm ${cls}${extraClass}" style="width:${size}px;height:${size+6}px;opacity:${opacity}">
-      <div class="cm-pin" style="background:${color};width:${size}px;height:${size}px;${extraStyle}"><span class="cm-icon" style="font-size:${size>40?14:size>32?12:10}px">${initials}</span></div>
+    className: 'custom-marker',
+    html: `<div class="cm ${cls}" style="width:${size}px;height:${size+6}px;opacity:${opacity};${isDimmed ? 'filter:grayscale(0.7);' : ''}">
+      <div class="cm-pin" style="background:${color};width:${size}px;height:${size}px"><span class="cm-icon" style="font-size:${size>32?12:10}px">${initials}</span></div>
     </div>`,
-    iconSize:[size, size+6], iconAnchor:[size/2, size+6]
+    iconSize: [size, size+6], iconAnchor: [size/2, size+6]
   });
 }
 
@@ -930,12 +975,18 @@ function renderTripResult(r){
     </div>
     <div class="trip-stat">
       <span class="trip-stat-label">SoC al llegar (sin carga)</span>
-      <span class="trip-stat-val ${r.endSoC<state.trip.endSoC?'danger':r.endSoC<25?'warning':'highlight'}">${r.endSoC.toFixed(0)}%</span>
+      <span class="trip-stat-val ${r.endSoC < 0 ? 'danger' : r.endSoC < state.trip.endSoC ? 'danger' : r.endSoC < 25 ? 'warning' : 'highlight'}">
+        ${r.endSoC < 0 ? '⚠️ Imposible sin cargar' : r.endSoC.toFixed(0) + '%'}
+      </span>
     </div>
     <div class="trip-stat">
       <span class="trip-stat-label">Paradas DC sugeridas</span>
       <span class="trip-stat-val">${r.stopsActual !== undefined ? r.stopsActual : r.stopsNeeded}</span>
     </div>
+    ${r.stopsActual > 0 ? `<div class="trip-stat">
+      <span class="trip-stat-label">SoC al llegar (con paradas)</span>
+      <span class="trip-stat-val highlight">~${(state.trip.endSoC).toFixed(0)}%</span>
+    </div>` : ''}
     ${r.safetyMode ? `<div class="trip-stat">
       <span class="trip-stat-label">🛡️ Modo seguridad</span>
       <span class="trip-stat-val" style="font-size:12px">${({minimal:'⚠️ Mínimo',normal:'✅ Normal',safe:'🛡️ Seguro',extreme:'🚨 Extremo'})[r.safetyMode]} (${(r.safetyBuffer*100).toFixed(0)}%)</span>
@@ -1697,6 +1748,8 @@ async function calculateTrip(){
   const startEnergy = TESLA.battery * (state.trip.startSoC / 100);
   const remainingEnergy = startEnergy - consumption;
   const endSoC = (remainingEnergy / TESLA.battery) * 100;
+  // SoC al llegar con las paradas: si hay paradas, llegas con el target del user
+  // Si no hay paradas necesarias, llegas con remainingEnergy
   const minEnergyNeeded = TESLA.battery * (state.trip.endSoC / 100);
   const stopsNeeded = remainingEnergy < minEnergyNeeded
     ? Math.ceil((consumption - (startEnergy - minEnergyNeeded)) / (TESLA.battery * 0.65))
@@ -1709,23 +1762,84 @@ async function calculateTrip(){
   const savings = gasolineCost - cost;
   const savingsPct = Math.round((savings / gasolineCost) * 100);
 
-  // ============== LÓGICA INTELIGENTE DE PARADAS CON SAFETY BUFFER ==============
+  // ============== LÓGICA POR TRAMOS (modelo profesional) ==============
+  // Cada tramo termina con el buffer mínimo (ej 30%)
+  // Cada parada carga al 80%
+  // El último tramo termina con el SoC objetivo del usuario (ej 50%)
+  
   const safetyBuffers = {
-    minimal: 0.10, normal: 0.20, safe: 0.30, extreme: 0.40
+    minimal: 0.10,  // parar a 10%
+    normal: 0.20,   // parar a 20%
+    safe: 0.30,     // parar a 30% ← DEFAULT
+    extreme: 0.40   // parar a 40%
   };
   const safetyMode = state.trip.safety || 'safe';
   const safetyBuffer = safetyBuffers[safetyMode];
   
-  // SoC mínimo efectivo = el mayor entre lo que pidió el user y el buffer del modo
-  const effectiveMinSoC = Math.max(state.trip.endSoC / 100, safetyBuffer);
-  const effectiveMinEnergy = TESLA.battery * effectiveMinSoC;
+  // Parámetros del modelo
+  const minSoC = safetyBuffer;              // Cada parada llegas con esto
+  const dcChargeTo = 0.80;                  // Cada parada cargas hasta esto
+  const targetEndSoC = state.trip.endSoC / 100;  // SoC objetivo al destino
   
-  // Recalcular paradas con safety
-  const dcChargeTo = 0.80;
-  const energyPerStop = TESLA.battery * (dcChargeTo - effectiveMinSoC);
-  const stopsActual = remainingEnergy < effectiveMinEnergy
-    ? Math.ceil((consumption - (startEnergy - effectiveMinEnergy)) / energyPerStop)
-    : 0;
+  // km que recorre el auto por cada % de batería
+  const kmPerPct = TESLA.battery / TESLA.consHwy / 100;  // ej: 60/0.175/100 = 3.43 km/%
+  
+  // Tramo 1: desde origen hasta primera parada
+  // Usa: startSoC - minSoC (ej: 90% - 30% = 60%)
+  const tramo1Pct = state.trip.startSoC / 100 - minSoC;
+  const tramo1Km = tramo1Pct * 100 * kmPerPct;
+  
+  // Tramo intermedio: cada parada al dcChargeTo, siguiente parada al minSoC
+  // Usa: dcChargeTo - minSoC (ej: 80% - 30% = 50%)
+  const tramoInterPct = dcChargeTo - minSoC;
+  const tramoInterKm = tramoInterPct * 100 * kmPerPct;
+  
+  // Tramo final: última parada al dcChargeTo, llega a destino con targetEndSoC
+  // Usa: dcChargeTo - targetEndSoC (ej: 80% - 50% = 30%)
+  const tramoFinalPct = Math.max(0, dcChargeTo - targetEndSoC);
+  const tramoFinalKm = tramoFinalPct * 100 * kmPerPct;
+  
+  // ¿Necesito alguna parada?
+  // Si la distancia total cabe dentro del tramo 1 con SoC final >= target, NO necesito parar
+  const kmConSoloBateriaInicial = (state.trip.startSoC / 100 - targetEndSoC) * 100 * kmPerPct;
+  
+  let stopsActual = 0;
+  let kmStops = []; // ubicaciones objetivo de cada parada
+  
+  if(distance <= kmConSoloBateriaInicial){
+    // No necesito cargar
+    stopsActual = 0;
+    debugLog(`✓ No requiere paradas: ${distance.toFixed(0)}km ≤ ${kmConSoloBateriaInicial.toFixed(0)}km de autonomía con SoC inicial`);
+  } else if(distance <= tramo1Km + tramoFinalKm){
+    // Solo 1 parada: en algún punto entre tramo1Km y (distance - tramoFinalKm)
+    stopsActual = 1;
+    kmStops = [Math.min(tramo1Km, distance - tramoFinalKm)];
+  } else {
+    // Múltiples paradas: tramo1 + N intermedios + tramo final
+    const kmIntermediosTotal = distance - tramo1Km - tramoFinalKm;
+    const intermedios = Math.ceil(kmIntermediosTotal / tramoInterKm);
+    stopsActual = 1 + intermedios;  // 1 (primera) + intermedios
+    
+    // Calcular ubicación objetivo de cada parada
+    kmStops.push(tramo1Km);  // primera parada
+    for(let i = 1; i < intermedios; i++){
+      kmStops.push(tramo1Km + tramoInterKm * i);
+    }
+    // Última parada: ubicada para que el tramo final sea exactamente tramoFinalKm
+    kmStops.push(distance - tramoFinalKm);
+  }
+  
+  debugLog(`📊 Modelo de tramos:`);
+  debugLog(`  Tramo 1 (${(state.trip.startSoC).toFixed(0)}%→${(minSoC*100).toFixed(0)}%): ${tramo1Km.toFixed(0)} km`);
+  debugLog(`  Tramo intermedio (${(dcChargeTo*100).toFixed(0)}%→${(minSoC*100).toFixed(0)}%): ${tramoInterKm.toFixed(0)} km c/u`);
+  debugLog(`  Tramo final (${(dcChargeTo*100).toFixed(0)}%→${(targetEndSoC*100).toFixed(0)}%): ${tramoFinalKm.toFixed(0)} km`);
+  debugLog(`  Total paradas: ${stopsActual}`);
+  debugLog(`  Ubicaciones objetivo: ${kmStops.map(k=>k.toFixed(0)+'km').join(', ')}`);
+  
+  // Compatibilidad con código existente
+  const effectiveMinSoC = minSoC;
+  const effectiveMinEnergy = TESLA.battery * minSoC;
+  const safetyBufferOld = safetyBuffer;
   
   // km crítico con safety buffer aplicado
   const kmCritico = (startEnergy - effectiveMinEnergy) / TESLA.consHwy;
@@ -1756,33 +1870,63 @@ async function calculateTrip(){
   
   debugLog(`Candidatos válidos: ${candidates.length} (entre km ${kmFirstStopMin.toFixed(0)} y ${(distance-30).toFixed(0)})`);
 
-  // Construir lista de paradas con stopsActual (incluye safety buffer)
+  // ============== BÚSQUEDA DE CARGADOR EN CADA km OBJETIVO ==============
+  // Ya tenemos kmStops calculado correctamente por el modelo de tramos.
+  // Para cada km objetivo, buscamos el mejor cargador disponible.
+  //
+  // CRÍTICO: cada parada debe estar ANTES de su km objetivo (no después)
+  // porque si está después significa que llegamos al cargador con MENOS de minSoC%
+  
   const finalStops = [];
-  if(stopsActual > 0){
-    // PRIMERA PARADA: la mejor opción ANTES del km crítico
-    const firstStopCandidates = candidates.filter(s => s.distFromOrigin <= kmFirstStopMax);
-    if(firstStopCandidates.length > 0){
-      // Elegir la más cercana al km crítico (maximizar autonomía usada)
-      // Pero también priorizar potencia alta (DC ultra rápida)
-      const sorted = firstStopCandidates
-        .map(s => ({...s, score: s.pc * 10 - Math.abs(s.distFromOrigin - kmFirstStopMax) }))
-        .sort((a,b) => b.score - a.score);
-      finalStops.push(sorted[0]);
-      debugLog(`Primera parada: ${sorted[0].n} a ${sorted[0].distFromOrigin.toFixed(0)}km`);
-    }
+  const usedStops = new Set();
+  
+  for(let i = 0; i < kmStops.length; i++){
+    const target = kmStops[i];
     
-    // PARADAS SIGUIENTES (si necesitas más de 1)
-    let lastKm = finalStops.length > 0 ? finalStops[0].distFromOrigin : 0;
-    for(let i = 1; i < stopsActual; i++){
-      // Próxima parada ~250km después de la última
-      const nextTarget = lastKm + 250;
-      const nextCandidates = candidates
-        .filter(s => s.distFromOrigin > lastKm + 100 && s.distFromOrigin <= lastKm + 320)
-        .sort((a,b) => Math.abs(a.distFromOrigin - nextTarget) - Math.abs(b.distFromOrigin - nextTarget));
-      if(nextCandidates.length > 0){
-        finalStops.push(nextCandidates[0]);
-        lastKm = nextCandidates[0].distFromOrigin;
-        debugLog(`Parada ${i+1}: ${nextCandidates[0].n} a ${lastKm.toFixed(0)}km`);
+    // Ventana de búsqueda: hasta el target (no más allá), pero buscar atrás hasta 80km
+    // Excepción para la última parada: puede estar un poco después si no hay opción antes
+    const isLast = i === kmStops.length - 1;
+    const minKm = Math.max(20, target - 80);
+    const maxKm = isLast ? target + 30 : target;
+    
+    const windowCandidates = candidates
+      .filter(s => 
+        s.distFromOrigin >= minKm && 
+        s.distFromOrigin <= maxKm &&
+        !usedStops.has(`${s.lat}_${s.lng}`)
+      )
+      .map(s => ({
+        ...s,
+        // Score: priorizar cerca del target, alta potencia, bajo desvío
+        // PENALIZAR cargadores que estén DESPUÉS del target (porque significaría
+        // llegar con menos batería que minSoC)
+        score: 
+          -Math.abs(s.distFromOrigin - target) * 3   // cerca del target (peso 3)
+          + Math.min(s.pc, 200) * 0.3                // potencia (peso 0.3, cap 200kW)
+          - s.detour * 2                             // desvío negativo (peso 2)
+          + (s.distFromOrigin <= target ? 20 : -30)  // bonus si está antes, penalty si está después
+      }))
+      .sort((a,b) => b.score - a.score);
+    
+    if(windowCandidates.length > 0){
+      const chosen = windowCandidates[0];
+      finalStops.push(chosen);
+      usedStops.add(`${chosen.lat}_${chosen.lng}`);
+      debugLog(`Parada ${i+1}: ${chosen.n} a ${chosen.distFromOrigin.toFixed(0)}km (target ${target.toFixed(0)}km, ${chosen.pc}kW, desvío ${chosen.detour.toFixed(1)}km)`);
+    } else {
+      debugLog(`⚠️ Parada ${i+1}: SIN cargadores entre km ${minKm.toFixed(0)} y ${maxKm.toFixed(0)} (target ${target.toFixed(0)}km)`);
+      // Buscar más lejos como último recurso
+      const farCandidates = candidates
+        .filter(s => 
+          Math.abs(s.distFromOrigin - target) <= 150 &&
+          !usedStops.has(`${s.lat}_${s.lng}`)
+        )
+        .sort((a,b) => Math.abs(a.distFromOrigin - target) - Math.abs(b.distFromOrigin - target));
+      if(farCandidates.length > 0){
+        const chosen = farCandidates[0];
+        finalStops.push(chosen);
+        usedStops.add(`${chosen.lat}_${chosen.lng}`);
+        debugLog(`  Fallback parada ${i+1}: ${chosen.n} a ${chosen.distFromOrigin.toFixed(0)}km (lejos del target ${target.toFixed(0)}km)`);
       }
     }
   }
