@@ -1,0 +1,58 @@
+{
+  "name": "EV Trip Chile - Tesla Model Y",
+  "short_name": "EV Trip CL",
+  "description": "Planificador de carga EV en Chile para Tesla Model Y Juniper. 556 estaciones, rutas reales por carretera.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0066cc",
+  "background_color": "#ffffff",
+  "lang": "es-CL",
+  "categories": [
+    "travel",
+    "navigation",
+    "utilities",
+    "automotive"
+  ],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Planificar viaje",
+      "short_name": "Viaje",
+      "description": "Calcular ruta con paradas de carga",
+      "url": "./?action=trip",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Carga rápida cerca",
+      "short_name": "DC rápida",
+      "description": "Filtrar solo cargadores DC ≥50kW",
+      "url": "./?filter=fast",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
