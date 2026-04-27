@@ -292,15 +292,45 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);
 
 /* ROUTE STOPS LIST */
 .stops-list{margin-top:10px}
+.stop-card-wrap{margin-bottom:8px}
 .stop-card{background:var(--bg);border:1px solid var(--line);border-radius:11px;
-  padding:11px;margin-bottom:8px;display:flex;gap:10px;align-items:center;cursor:pointer;
+  padding:11px;display:flex;gap:10px;align-items:center;cursor:pointer;
   transition:all .15s}
+.stop-card.primary-stop{border-left:3px solid #10b981}
 .stop-card:hover{border-color:#0066cc}
-.stop-num{width:26px;height:26px;border-radius:50%;background:#0066cc;color:#fff;
+.stop-num{width:26px;height:26px;border-radius:50%;background:#10b981;color:#fff;
   display:grid;place-items:center;font-size:12px;font-weight:700;flex-shrink:0}
 .stop-info{flex:1;min-width:0}
 .stop-name{font-size:13px;font-weight:600}
 .stop-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.alt-toggle{background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:5px 8px;
+  cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:4px;flex-shrink:0;
+  transition:all .15s;font-family:inherit}
+.alt-toggle:hover{background:var(--line);color:var(--text)}
+.alt-toggle.expanded svg{transform:rotate(180deg)}
+.alt-toggle svg{transition:transform .25s ease}
+.alt-count{font-size:11px;font-weight:700;background:#f59e0b;color:#000;
+  border-radius:8px;padding:1px 6px;min-width:16px;text-align:center}
+.alt-list{margin-top:6px;padding-left:14px;border-left:2px dashed var(--line);
+  animation:slideDown .25s ease-out}
+@keyframes slideDown{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.alt-header{font-size:11px;color:var(--muted);font-weight:600;padding:4px 0 6px;text-transform:uppercase;letter-spacing:0.04em}
+.alt-card{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:9px;
+  padding:9px;display:flex;gap:9px;align-items:center;cursor:pointer;margin-bottom:6px;transition:all .15s}
+.alt-card:hover{background:rgba(245,158,11,.15);border-color:#f59e0b}
+.alt-icon{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;
+  flex-shrink:0;font-size:11px;font-weight:700;color:#fff}
+.alt-info{flex:1;min-width:0}
+.alt-name{font-size:12px;font-weight:600;line-height:1.3}
+.alt-meta{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* Legend en panel de viaje */
+.legend-row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.legend-item{display:flex;align-items:center;gap:5px}
+.leg-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.leg-primary{background:#0066cc;box-shadow:0 0 0 2px #10b981}
+.leg-alt{background:#0066cc;box-shadow:0 0 0 2px #f59e0b}
+.leg-dim{background:#94a3b8;opacity:.4}
 
 /* ============== EMPTY ============== */
 .empty{text-align:center;padding:30px 20px;color:var(--muted)}
@@ -315,9 +345,14 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);
 
 /* ============== CUSTOM MARKERS ============== */
 .custom-marker{background:transparent !important;border:none !important}
-.cm{width:30px;height:36px;position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
+.cm{width:30px;height:36px;position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));transition:all .3s ease}
 .cm-pin{width:30px;height:30px;border-radius:50% 50% 50% 0;
-  transform:rotate(-45deg);display:grid;place-items:center;border:2px solid #fff}
+  transform:rotate(-45deg);display:grid;place-items:center;border:2px solid #fff;transition:all .3s ease}
+.cm-highlighted{animation:bounce-in .5s ease-out,glow-green 2s ease-in-out infinite alternate}
+.cm-highlighted .cm-pin{border:3px solid #10b981 !important}
+.cm-alternative .cm-pin{border:2.5px solid #f59e0b !important}
+@keyframes bounce-in{0%{transform:scale(.3) translateY(-20px);opacity:0}60%{transform:scale(1.15) translateY(0);opacity:1}100%{transform:scale(1)}}
+@keyframes glow-green{from{filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}to{filter:drop-shadow(0 0 8px rgba(16,185,129,.7)) drop-shadow(0 2px 6px rgba(0,0,0,.3))}}
 .cm-icon{transform:rotate(45deg);color:#fff;font-size:11px;font-weight:700}
 .cm.fast::after{content:"⚡";position:absolute;top:-4px;right:-4px;width:14px;height:14px;
   background:#f59e0b;border-radius:50%;display:grid;place-items:center;font-size:8px;
@@ -513,6 +548,10 @@ const OP_INITIALS = {
 // ============== ESTADO ==============
 const state = {
   filtered: STATIONS,
+  tripActive: false,
+  highlightedStops: new Set(),  // keys: "lat_lng"
+  alternativeStops: new Set(),  // keys: "lat_lng" para alternativos cercanos
+
   filters: {
     quick:'all', operators:new Set(), minPower:0,
     onlyDC:false, onlyTeslaCompat:true,
@@ -583,12 +622,33 @@ const cluster = L.markerClusterGroup({
 function makeIcon(s){
   const color = OP_COLORS[s.op] || OP_COLORS['Otro'];
   const initials = OP_INITIALS[s.op] || '?';
-  const size = s.fast ? 36 : 30;
-  const isFast = s.fast ? 'fast' : '';
+  const key = `${s.lat}_${s.lng}`;
+  const isHighlighted = state.highlightedStops.has(key);
+  const isAlternative = state.alternativeStops.has(key);
+  const isDimmed = state.tripActive && !isHighlighted && !isAlternative;
+  
+  let size = s.fast ? 36 : 30;
+  let cls = s.fast ? 'fast' : '';
+  let opacity = 1;
+  let extraStyle = '';
+  let extraClass = '';
+  
+  if(isHighlighted){
+    size = 50; // más grande
+    extraClass = ' cm-highlighted';
+    extraStyle = 'box-shadow:0 0 0 4px rgba(16,185,129,.4),0 4px 16px rgba(0,0,0,.5);z-index:1000';
+  } else if(isAlternative){
+    size = 38;
+    extraClass = ' cm-alternative';
+    extraStyle = 'box-shadow:0 0 0 3px rgba(245,158,11,.5),0 3px 10px rgba(0,0,0,.4)';
+  } else if(isDimmed){
+    opacity = 0.25;
+  }
+  
   return L.divIcon({
     className:'custom-marker',
-    html:`<div class="cm ${isFast}" style="width:${size}px;height:${size+6}px">
-      <div class="cm-pin" style="background:${color};width:${size}px;height:${size}px"><span class="cm-icon" style="font-size:${size>32?12:10}px">${initials}</span></div>
+    html:`<div class="cm ${cls}${extraClass}" style="width:${size}px;height:${size+6}px;opacity:${opacity}">
+      <div class="cm-pin" style="background:${color};width:${size}px;height:${size}px;${extraStyle}"><span class="cm-icon" style="font-size:${size>40?14:size>32?12:10}px">${initials}</span></div>
     </div>`,
     iconSize:[size, size+6], iconAnchor:[size/2, size+6]
   });
@@ -782,24 +842,54 @@ function renderTripResult(r){
   </div>
   ${r.suggestedStops.length > 0 ? `
     <div class="section" style="margin-top:14px">
-      <h3>📍 Cargadores DC sugeridos en ruta</h3>
+      <h3>📍 Paradas de carga sugeridas</h3>
+      <div class="legend-row">
+        <div class="legend-item"><span class="leg-dot leg-primary"></span>Sugerida</div>
+        <div class="legend-item"><span class="leg-dot leg-alt"></span>Alternativa</div>
+        <div class="legend-item"><span class="leg-dot leg-dim"></span>Otras (atenuadas)</div>
+      </div>
       <div class="stops-list">
-        ${r.suggestedStops.map((s,i)=>`
-          <div class="stop-card" data-station-lat="${s.lat}" data-station-lng="${s.lng}">
-            <div class="stop-num">${i+1}</div>
-            <div class="stop-info">
-              <div class="stop-name">${s.n}</div>
-              <div class="stop-meta">${s.op} · ${s.pc}kW · ${s.distFromOrigin.toFixed(0)}km del origen · desvío ${s.detour.toFixed(1)}km</div>
+        ${r.suggestedStops.map((s,i)=>{
+          const altGroup = r.alternativesByStop[i];
+          const hasAlts = altGroup && altGroup.alternatives.length > 0;
+          return `
+          <div class="stop-card-wrap">
+            <div class="stop-card primary-stop" data-station-lat="${s.lat}" data-station-lng="${s.lng}">
+              <div class="stop-num">${i+1}</div>
+              <div class="stop-info">
+                <div class="stop-name">${s.n}</div>
+                <div class="stop-meta">${s.op} · ${s.pc}kW · ${s.distFromOrigin.toFixed(0)}km del origen · desvío ${s.detour.toFixed(1)}km</div>
+              </div>
+              ${hasAlts ? `<button class="alt-toggle" data-alt-idx="${i}" title="Ver alternativas">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+                <span class="alt-count">${altGroup.alternatives.length}</span>
+              </button>` : ''}
             </div>
+            ${hasAlts ? `
+              <div class="alt-list" id="altList-${i}" style="display:none">
+                <div class="alt-header">⚠️ Si la parada ${i+1} no está disponible:</div>
+                ${altGroup.alternatives.map(a => `
+                  <div class="alt-card" data-station-lat="${a.lat}" data-station-lng="${a.lng}">
+                    <div class="alt-icon" style="background:${OP_COLORS[a.op]}">${OP_INITIALS[a.op]}</div>
+                    <div class="alt-info">
+                      <div class="alt-name">${a.n}</div>
+                      <div class="alt-meta">${a.op} · ${a.pc}kW · a ${a.distanceFromStop.toFixed(1)}km de la sugerida</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     </div>
   ` : ''}
   ${r ? `
-    <div class="actions">
-      <button class="btn btn-secondary" id="saveRoute">⭐ Guardar ruta</button>
-      <button class="btn btn-secondary" id="shareTrip">🗺️ Google Maps</button>
+    <div class="actions" style="grid-template-columns:1fr 1fr 1fr">
+      <button class="btn btn-secondary" id="saveRoute">⭐ Guardar</button>
+      <button class="btn btn-secondary" id="shareTrip">🗺️ Maps</button>
+      <button class="btn btn-secondary" id="clearTrip">✖️ Limpiar</button>
     </div>
     <button class="btn btn-primary" id="shareTripNative" style="width:100%;margin-bottom:8px">📲 Compartir ruta al auto</button>
     <div class="help">📲 Abre el menú nativo del sistema. Selecciona <b>Tesla</b> para enviar la ruta al auto (requiere app Tesla instalada y vinculada).</div>
@@ -1091,11 +1181,26 @@ function attachHandlers(tab){
     document.getElementById('shareTrip')?.addEventListener('click', shareToGoogleMaps);
     document.getElementById('shareTripNative')?.addEventListener('click', shareTripToCar);
     document.getElementById('saveRoute')?.addEventListener('click', saveCurrentRoute);
+    document.getElementById('clearTrip')?.addEventListener('click', clearTripView);
     document.querySelectorAll('[data-station-lat]').forEach(el=>{
-      el.addEventListener('click', ()=>{
+      el.addEventListener('click', e=>{
+        // Si el click viene del botón de toggle, no hacer flyTo
+        if(e.target.closest('.alt-toggle')) return;
         const lat = +el.dataset.stationLat, lng = +el.dataset.stationLng;
         const station = STATIONS.find(x=>x.lat===lat && x.lng===lng);
         if(station){ map.flyTo([station.lat, station.lng], 15); showStation(station); }
+      });
+    });
+    // Toggle alternativas
+    document.querySelectorAll('.alt-toggle').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        e.stopPropagation();
+        const idx = btn.dataset.altIdx;
+        const list = document.getElementById('altList-'+idx);
+        if(!list) return;
+        const isOpen = list.style.display === 'block';
+        list.style.display = isOpen ? 'none' : 'block';
+        btn.classList.toggle('expanded', !isOpen);
       });
     });
   }
@@ -1187,6 +1292,22 @@ function capitalize(s){
 }
 
 // ============== CHARGE CALC ==============
+function clearTripView(){
+  state.tripActive = false;
+  state.highlightedStops.clear();
+  state.alternativeStops.clear();
+  state.trip.result = null;
+  // Limpiar línea de ruta y markers
+  if(routeLine){ map.removeLayer(routeLine); routeLine = null; }
+  if(routeOutline){ map.removeLayer(routeOutline); routeOutline = null; }
+  routeMarkers.forEach(m=>map.removeLayer(m));
+  routeMarkers = [];
+  // Re-aplicar filtros para refrescar markers sin highlights
+  applyFilters();
+  renderTab('trip');
+  toast('Ruta limpiada');
+}
+
 function formatDuration(minutes){
   const h = Math.floor(minutes / 60);
   const m = Math.round(minutes % 60);
@@ -1327,11 +1448,36 @@ async function calculateTrip(){
     ? filtered.slice(0, Math.max(stopsNeeded, Math.min(filtered.length, 5)))
     : (distance > 200 ? filtered.slice(0, 2) : []);
 
+  // Encontrar alternativas para cada parada (cargadores DC dentro de 30km de cada sugerencia)
+  const alternativesByStop = finalStops.map(stop => {
+    const alts = STATIONS
+      .filter(s => s.fast && s.tcomp)
+      .filter(s => !(s.lat === stop.lat && s.lng === stop.lng)) // no incluir la misma
+      .map(s => ({ ...s, distanceFromStop: haversine([stop.lat, stop.lng], [s.lat, s.lng]) }))
+      .filter(s => s.distanceFromStop <= 30) // alternativas a máximo 30km
+      .sort((a,b) => a.distanceFromStop - b.distanceFromStop)
+      .slice(0, 3); // top 3 alternativas
+    return { primary: stop, alternatives: alts };
+  });
+
   state.trip.result = {
     distance, duration, consumption, endSoC, stopsNeeded,
     cost, gasolineCost, savings, savingsPct,
-    suggestedStops: finalStops, origin, dest, routeGeometry
+    suggestedStops: finalStops, origin, dest, routeGeometry,
+    alternativesByStop
   };
+
+  // Activar modo viaje: destacar primarias, marcar alternativas, atenuar el resto
+  state.tripActive = true;
+  state.highlightedStops = new Set(finalStops.map(s => `${s.lat}_${s.lng}`));
+  state.alternativeStops = new Set();
+  alternativesByStop.forEach(g => {
+    g.alternatives.forEach(a => state.alternativeStops.add(`${a.lat}_${a.lng}`));
+  });
+  
+  // Re-renderizar markers con nuevo estilo
+  applyFilters();
+  
   drawRouteLine(origin, dest, finalStops, routeGeometry);
   renderTab('trip');
 
