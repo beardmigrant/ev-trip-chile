@@ -343,6 +343,34 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);
   opacity:0;transition:all .3s;box-shadow:var(--shadow-lg);pointer-events:none;max-width:90vw}
 .toast.show{transform:translate(-50%,0);opacity:1}
 
+/* Debug panel - triple tap en logo para abrir */
+.debug-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.9);
+  width:92vw;max-width:480px;max-height:85vh;background:#0a0e1a;color:#10b981;
+  border:1px solid #243049;border-radius:12px;z-index:5000;
+  font-family:Menlo,Consolas,monospace;display:none;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.7);opacity:0;transition:all .25s}
+.debug-panel.show{display:flex;opacity:1;transform:translate(-50%,-50%) scale(1)}
+.debug-header{padding:10px 14px;background:#11172a;border-bottom:1px solid #243049;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;font-weight:700;color:#fff;border-radius:12px 12px 0 0}
+.debug-content{flex:1;overflow:auto;padding:12px;font-size:11px;line-height:1.45;
+  white-space:pre-wrap;word-break:break-word;margin:0;color:#10b981}
+.debug-footer{padding:10px;border-top:1px solid #243049;display:flex;gap:6px;background:#11172a;border-radius:0 0 12px 12px}
+.debug-footer .btn{flex:1}
+
+/* Progress bar para descargas largas */
+.progress-bar{position:fixed;top:0;left:0;right:0;
+  background:linear-gradient(90deg,#0066cc,#0080ff);color:#fff;
+  padding:10px 14px;font-size:12px;font-weight:600;text-align:center;
+  z-index:3000;box-shadow:0 2px 12px rgba(0,102,204,.4);
+  transform:translateY(-100%);transition:transform .3s;display:flex;
+  align-items:center;justify-content:center;gap:8px;
+  padding-top:calc(10px + var(--safe-top))}
+.progress-bar.show{transform:translateY(0)}
+.progress-bar::before{content:'';width:14px;height:14px;border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
 /* ============== CUSTOM MARKERS ============== */
 .custom-marker{background:transparent !important;border:none !important}
 .cm{width:30px;height:36px;position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));transition:all .3s ease}
@@ -689,9 +717,6 @@ function buildMarkers(list){
     return m;
   });
   cluster.addLayers(markers);
-  document.getElementById('cAll').textContent = list.length;
-  document.getElementById('cFast').textContent = list.filter(s=>s.fast).length;
-  document.getElementById('cCcs').textContent = list.filter(s=>s.co.includes('CCS2')).length;
 }
 
 map.addLayer(cluster);
@@ -2032,18 +2057,33 @@ sheetHandle.addEventListener('click', ()=>{
 
 // ============== LAYER CHIPS ==============
 document.querySelectorAll('.layer-chip').forEach(c=>{
-  c.addEventListener('click', async ()=>{
+  c.addEventListener('click', async (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
     const layer = c.dataset.layer;
-    if(!layer) return;
-    
-    // Si activamos una capa de turismo y aún no se ha cargado OSM, cargar
-    if(layer !== 'ev' && !state.tourismLoaded && !state.tourismLoading){
-      await loadTourismData();
+    debugLog('Chip click: ' + layer);
+    if(!layer || !LAYERS[layer]){
+      debugLog('ERROR: layer no encontrado: ' + layer);
+      return;
     }
     
+    // PRIMERO toggle el estado lógico
     LAYERS[layer].active = !LAYERS[layer].active;
     c.classList.toggle('active', LAYERS[layer].active);
+    debugLog(layer + ' = ' + LAYERS[layer].active);
     
+    // SEGUNDO: si activamos una capa de turismo y aún no se ha cargado OSM, cargar
+    if(LAYERS[layer].active && layer !== 'ev' && !state.tourismLoaded && !state.tourismLoading){
+      debugLog('Iniciando carga turismo desde chip ' + layer);
+      try {
+        await loadTourismData();
+      } catch(err){
+        debugLog('ERROR loadTourism: ' + err.message);
+        toast('❌ Error cargando datos: ' + err.message, 'warning');
+      }
+    }
+    
+    // TERCERO: actualizar markers
     applyFilters();
     const total = state.filtered.length;
     toast(`${total} puntos visibles`);
@@ -2397,17 +2437,144 @@ function toast(msg){
   setTimeout(()=>t.classList.remove('show'), 2500);
 }
 
+// ============== DEBUG PANEL ==============
+window._debugLogs = [];
+function debugLog(msg){
+  const ts = new Date().toLocaleTimeString();
+  const entry = `[${ts}] ${msg}`;
+  console.log(entry);
+  window._debugLogs.push(entry);
+  if(window._debugLogs.length > 50) window._debugLogs.shift();
+  
+  // Si el panel está abierto, actualizarlo
+  const panel = document.getElementById('debugPanel');
+  if(panel && panel.classList.contains('show')){
+    document.getElementById('debugContent').textContent = window._debugLogs.join('\n');
+  }
+}
+
+function showDebugPanel(){
+  let panel = document.getElementById('debugPanel');
+  if(!panel){
+    panel = document.createElement('div');
+    panel.id = 'debugPanel';
+    panel.className = 'debug-panel';
+    panel.innerHTML = `
+      <div class="debug-header">
+        <span>🐛 Debug Logs</span>
+        <button id="debugClose" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer">✖️</button>
+      </div>
+      <pre id="debugContent" class="debug-content">Sin logs aún. Toca un chip de turismo.</pre>
+      <div class="debug-footer">
+        <button id="debugClear" class="btn btn-secondary" style="font-size:11px;padding:6px 10px">Limpiar</button>
+        <button id="debugCopy" class="btn btn-secondary" style="font-size:11px;padding:6px 10px">Copiar</button>
+        <button id="debugTest" class="btn btn-primary" style="font-size:11px;padding:6px 10px">Probar Overpass</button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+    
+    document.getElementById('debugClose').addEventListener('click', ()=>{
+      panel.classList.remove('show');
+    });
+    document.getElementById('debugClear').addEventListener('click', ()=>{
+      window._debugLogs = [];
+      document.getElementById('debugContent').textContent = 'Logs limpiados.';
+    });
+    document.getElementById('debugCopy').addEventListener('click', ()=>{
+      navigator.clipboard.writeText(window._debugLogs.join('\n')).then(()=>{
+        toast('📋 Logs copiados');
+      });
+    });
+    document.getElementById('debugTest').addEventListener('click', async ()=>{
+      debugLog('=== TEST OVERPASS ===');
+      const testQuery = '[out:json][timeout:10];node["amenity"="restaurant"](around:1000,-33.4378,-70.6505);out body;';
+      const endpoints = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://lz4.overpass-api.de/api/interpreter'
+      ];
+      for(const ep of endpoints){
+        debugLog('Probando: ' + ep);
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(()=>ctrl.abort(), 15000);
+          const res = await fetch(ep, {
+            method: 'POST',
+            headers: {'Content-Type':'application/x-www-form-urlencoded'},
+            body: 'data=' + encodeURIComponent(testQuery),
+            signal: ctrl.signal
+          });
+          clearTimeout(timer);
+          debugLog('  → HTTP ' + res.status);
+          if(res.ok){
+            const data = await res.json();
+            debugLog('  → ' + (data.elements ? data.elements.length : 0) + ' resultados');
+          } else {
+            const txt = await res.text();
+            debugLog('  → Error: ' + txt.substring(0, 100));
+          }
+        } catch(e){
+          debugLog('  → Falló: ' + e.name + ': ' + e.message);
+        }
+      }
+      debugLog('=== FIN TEST ===');
+    });
+  }
+  panel.classList.add('show');
+  document.getElementById('debugContent').textContent = window._debugLogs.length 
+    ? window._debugLogs.join('\n') 
+    : 'Sin logs aún. Toca un chip de turismo.';
+}
+
+// Atajo: triple-tap en el logo abre el debug panel
+let logoTaps = 0;
+let logoTapTimer = null;
+document.addEventListener('DOMContentLoaded', ()=>{
+  const logo = document.querySelector('.brand-logo');
+  if(logo){
+    logo.addEventListener('click', ()=>{
+      logoTaps++;
+      clearTimeout(logoTapTimer);
+      if(logoTaps >= 3){
+        showDebugPanel();
+        logoTaps = 0;
+      } else {
+        logoTapTimer = setTimeout(()=>{ logoTaps = 0; }, 1000);
+      }
+    });
+  }
+});
+
+// ============== PROGRESS UI ==============
+function showProgress(msg){
+  let el = document.getElementById('progressBar');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'progressBar';
+    el.className = 'progress-bar';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideProgress(){
+  const el = document.getElementById('progressBar');
+  if(el) el.classList.remove('show');
+}
+
 // ============== TOURISM DATA LOADING ==============
 async function loadTourismData(){
-  if(state.tourismLoaded || state.tourismLoading) return;
+  debugLog('loadTourismData() called');
+  if(state.tourismLoaded){ debugLog('Ya cargado, skip'); return; }
+  if(state.tourismLoading){ debugLog('Ya cargando, skip'); return; }
   state.tourismLoading = true;
+  debugLog('Iniciando descarga turismo OSM...');
   
-  // Mostrar loading toast
-  toast('🌐 Descargando puntos de turismo de OpenStreetMap... (~10-30s)');
+  showProgress('🌐 Conectando con OpenStreetMap...');
   
-  // Bbox de Chile aproximado (continental + Chiloé)
-  // Lat: -56 a -17.5  |  Lng: -76 a -66
-  // Para no sobrecargar Overpass, dividimos por zonas
+  // Reducir scope: bbox de Chile pero sólo nacional (sin extremos extremos)
+  // Antes: -56 a -17.5 (todo Chile incluyendo antártico). Demasiado para 1 query.
+  // Ahora: -56 a -17.5 sigue válido pero con queries más pequeñas
   const queries = [
     // Hoteles + alojamiento
     `[out:json][timeout:60];
@@ -2455,40 +2622,55 @@ async function loadTourismData(){
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
     'https://lz4.overpass-api.de/api/interpreter',
-    'https://overpass.openstreetmap.fr/api/interpreter'
+    'https://overpass.openstreetmap.fr/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
   ];
   
+  const queryLabels = ['hoteles','restaurants','sitios históricos','naturaleza','atracciones','astronomía'];
   const allResults = [];
   
   for(let i = 0; i < queries.length; i++){
     const query = queries[i];
     let success = false;
     
+    showProgress(`📥 Descargando ${queryLabels[i]}... (${i+1}/${queries.length})`);
+    
     for(const endpoint of endpoints){
       try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 20000); // 20s máx por endpoint
+        
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          body: 'data=' + encodeURIComponent(query)
+          body: 'data=' + encodeURIComponent(query),
+          signal: controller.signal
         });
-        if(!res.ok) continue;
+        clearTimeout(timer);
+        
+        if(!res.ok){
+          console.warn(`${endpoint}: HTTP ${res.status}`);
+          continue;
+        }
         const data = await res.json();
         if(data.elements){
           allResults.push({queryIdx: i, elements: data.elements});
+          showProgress(`✓ ${queryLabels[i]}: ${data.elements.length} puntos`);
           success = true;
           break;
         }
       } catch(e){
-        console.warn(`Endpoint ${endpoint} failed:`, e);
+        console.warn(`${endpoint} (${queryLabels[i]}):`, e.name, e.message);
+        if(e.name === 'AbortError') showProgress(`⏱️ ${queryLabels[i]}: timeout, probando otro servidor...`);
       }
     }
     
     if(!success){
-      console.warn(`Query ${i} failed on all endpoints`);
+      showProgress(`⚠️ ${queryLabels[i]}: no se pudo descargar`);
     }
     
-    // Pequeña pausa entre queries para no abusar del API
-    if(i < queries.length - 1) await new Promise(r => setTimeout(r, 1000));
+    // Pausa breve entre queries para no abusar del API
+    if(i < queries.length - 1) await new Promise(r => setTimeout(r, 500));
   }
   
   // Procesar resultados
@@ -2540,7 +2722,13 @@ async function loadTourismData(){
   
   state.tourismLoaded = true;
   state.tourismLoading = false;
-  toast(`✓ ${TOURISM_POIS.length} puntos turísticos cargados`);
+  hideProgress();
+  
+  if(TOURISM_POIS.length === 0){
+    toast('⚠️ No se pudieron descargar datos de turismo. OpenStreetMap puede estar saturado. Reintenta más tarde.', 'warning');
+  } else {
+    toast(`✓ ${TOURISM_POIS.length} puntos turísticos cargados`);
+  }
   applyFilters();
 }
 
