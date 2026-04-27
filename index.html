@@ -753,14 +753,29 @@ function applyFilters(){
 }
 
 function updateChipCounts(){
-  const total = state.filtered.length;
-  document.getElementById('cEV').textContent = state.filtered.filter(s=>s._type==='ev').length;
-  document.getElementById('cHotel').textContent = TOURISM_POIS.filter(p=>p.cat==='hotel').length || '·';
-  document.getElementById('cRest').textContent = TOURISM_POIS.filter(p=>p.cat==='restaurant').length || '·';
-  document.getElementById('cHist').textContent = TOURISM_POIS.filter(p=>p.cat==='historic').length || '·';
-  document.getElementById('cNat').textContent = TOURISM_POIS.filter(p=>p.cat==='nature').length || '·';
-  document.getElementById('cAttr').textContent = TOURISM_POIS.filter(p=>p.cat==='attraction').length || '·';
-  document.getElementById('cAstro').textContent = TOURISM_POIS.filter(p=>p.cat==='astro').length || '·';
+  // Helper: contar puntos disponibles en cada capa (independiente de filtros aplicados)
+  const countCat = (cat) => TOURISM_POIS.filter(p => p.cat === cat).length;
+  
+  // Si TOURISM_POIS no tiene datos aún, mostrar punto en vez de 0
+  const fmt = n => n > 0 ? n : '·';
+  
+  // EV siempre tiene datos (vienen embebidos)
+  const elEV = document.getElementById('cEV');
+  if(elEV) elEV.textContent = STATIONS.length;
+  
+  const mapping = {
+    cHotel: countCat('hotel'),
+    cRest: countCat('restaurant'),
+    cHist: countCat('historic'),
+    cNat: countCat('nature'),
+    cAttr: countCat('attraction'),
+    cAstro: countCat('astro')
+  };
+  
+  for(const [id, val] of Object.entries(mapping)){
+    const el = document.getElementById(id);
+    if(el) el.textContent = fmt(val);
+  }
 }
 
 // ============== TABS ==============
@@ -2729,6 +2744,7 @@ async function loadTourismData(){
   } else {
     toast(`✓ ${TOURISM_POIS.length} puntos turísticos cargados`);
   }
+  updateChipCounts();  // <- actualizar contadores ahora que tenemos datos
   applyFilters();
 }
 
@@ -2753,6 +2769,7 @@ function loadCachedTourism(){
 
 // ============== INIT ==============
 loadCachedTourism();
+updateChipCounts();  // mostrar contadores iniciales (cache + EV)
 applyFilters();
 renderTab('filters');
 toast(`${STATIONS.length} estaciones cargadas`);
