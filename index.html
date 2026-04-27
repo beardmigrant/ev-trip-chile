@@ -3,7 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#ffffff" id="themeColorMeta">
+<meta name="theme-color" content="#0066cc" id="themeColorMeta">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EV Trip CL">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="EV Trip Chile">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="Planificador de carga EV en Chile para Tesla Model Y. 556 estaciones de carga, rutas reales por carretera, modo offline.">
+
+<!-- PWA manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- Íconos -->
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
 <title>EV Trip Chile · Tesla Model Y</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -338,6 +354,8 @@ input[type=range]{accent-color:#0066cc}
   max-width:420px;width:100%;max-height:85vh;overflow-y:auto;
   box-shadow:var(--shadow-lg);animation:slideUp .3s cubic-bezier(.32,.72,0,1)}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%,100%{transform:scale(1);box-shadow:0 8px 28px rgba(16,185,129,.45)}50%{transform:scale(1.08);box-shadow:0 8px 32px rgba(16,185,129,.7)}}
+body.standalone-mode{padding-top:0}
 @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 .modal-header{padding:18px 20px 0;display:flex;align-items:center;gap:10px}
 .modal-icon{width:42px;height:42px;background:linear-gradient(135deg,#0066cc,#0080ff);
@@ -408,6 +426,9 @@ input[type=range]{accent-color:#0066cc}
 
 <!-- FABs -->
 <div class="fabs">
+  <button class="fab" id="fabInstall" title="Instalar app" style="display:none;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border-color:#10b981">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+  </button>
   <button class="fab" id="fabSatellite" title="Vista satelital">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></svg>
   </button>
@@ -522,7 +543,7 @@ const map = L.map('map', {
 // LIGHT TILES (Carto Voyager)
 const lightTiles = L.tileLayer(
   'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-  { subdomains:'abcd', maxZoom:20, attribution:'© OpenStreetMap © CARTO' }
+  { subdomains:'abcd', maxZoom:22, maxNativeZoom:20, attribution:'© OpenStreetMap © CARTO' }
 );
 // DARK TILES (Carto Dark Matter — más visible y con contraste)
 const darkTiles = L.tileLayer(
@@ -536,11 +557,15 @@ const darkBase = L.tileLayer(
 // SATELLITE
 const sat = L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  { maxZoom:19, attribution:'© Esri' }
+  { 
+    maxZoom: 22,           // permitir zoom UI hasta 22
+    maxNativeZoom: 19,     // pero escalar tile zoom 19 al hacer zoom mayor (no queda en blanco)
+    attribution: '© Esri'
+  }
 );
 const satLabels = L.tileLayer(
   'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
-  { subdomains:'abcd', maxZoom:20, opacity:0.95 }
+  { subdomains:'abcd', maxZoom:22, maxNativeZoom:20, opacity:0.95 }
 );
 
 let currentBase = state.theme === 'dark' ? darkBase : lightTiles;
@@ -774,9 +799,10 @@ function renderTripResult(r){
   ${r ? `
     <div class="actions">
       <button class="btn btn-secondary" id="saveRoute">⭐ Guardar ruta</button>
-      <button class="btn btn-primary" id="shareTrip">🗺️ Abrir en Google Maps</button>
+      <button class="btn btn-secondary" id="shareTrip">🗺️ Google Maps</button>
     </div>
-    <div class="help">Desde Google Maps móvil: <b>Compartir</b> → <b>Tesla</b> para enviar al auto.</div>
+    <button class="btn btn-primary" id="shareTripNative" style="width:100%;margin-bottom:8px">📲 Compartir ruta al auto</button>
+    <div class="help">📲 Abre el menú nativo del sistema. Selecciona <b>Tesla</b> para enviar la ruta al auto (requiere app Tesla instalada y vinculada).</div>
   ` : ''}
   `;
 }
@@ -940,8 +966,11 @@ function renderStation(){
     <button class="btn btn-fav ${isFav?'active':''}" id="favBtn">${isFav?'⭐ Guardado':'☆ Guardar'}</button>
     <button class="btn btn-secondary" id="setDestBtn">🎯 Definir como destino</button>
   </div>
-  <button class="btn btn-primary" id="gmapsBtn" style="width:100%;margin-bottom:8px">🗺️ Abrir en Google Maps</button>
-  <div class="help">Google Maps móvil → <b>Compartir</b> → <b>Tesla</b> para enviar al auto.</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+    <button class="btn btn-secondary" id="gmapsBtn">🗺️ Google Maps</button>
+    <button class="btn btn-primary" id="shareBtn">📲 Compartir al auto</button>
+  </div>
+  <div class="help">📲 <b>"Compartir al auto"</b> abre el menú nativo del sistema. Selecciona <b>Tesla</b> para enviar el destino directamente al auto (requiere app Tesla instalada).</div>
   `;
 }
 
@@ -1060,6 +1089,7 @@ function attachHandlers(tab){
 
     document.getElementById('calcTrip')?.addEventListener('click', calculateTrip);
     document.getElementById('shareTrip')?.addEventListener('click', shareToGoogleMaps);
+    document.getElementById('shareTripNative')?.addEventListener('click', shareTripToCar);
     document.getElementById('saveRoute')?.addEventListener('click', saveCurrentRoute);
     document.querySelectorAll('[data-station-lat]').forEach(el=>{
       el.addEventListener('click', ()=>{
@@ -1083,6 +1113,15 @@ function attachHandlers(tab){
       const s = state.selectedStation;
       const url = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}&travelmode=driving`;
       window.open(url, '_blank');
+    });
+    document.getElementById('shareBtn')?.addEventListener('click', async ()=>{
+      const s = state.selectedStation;
+      await shareToCar({
+        title: s.n,
+        text: `${s.n} - ${s.d}, ${s.c}`,
+        lat: s.lat,
+        lng: s.lng
+      });
     });
   }
 
@@ -1408,6 +1447,83 @@ function saveCurrentRoute(){
   });
   localStorage.setItem('ev_routes', JSON.stringify(state.routes));
   toast('Ruta guardada en ⭐ Guardados');
+}
+
+// ============== WEB SHARE API (compartir al auto) ==============
+async function shareToCar({title, text, lat, lng}){
+  // URL de Google Maps que el sistema operativo reconoce
+  // Cuando el usuario seleccione Tesla en el share sheet, la app Tesla parseará esta URL
+  const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+  
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: title || 'Cargador EV',
+        text: text || 'Ubicación de cargador',
+        url: gmapsUrl
+      });
+      toast('📲 Compartido. Selecciona Tesla en el menú.');
+    } catch(err) {
+      // Usuario canceló o falló
+      if (err.name !== 'AbortError') {
+        toast('Error al compartir: ' + err.message, 'warning');
+        // Fallback: copiar URL al portapapeles
+        copyToClipboard(gmapsUrl);
+      }
+    }
+  } else {
+    // Navegador no soporta Web Share (desktop común). Copiar al portapapeles.
+    copyToClipboard(gmapsUrl);
+    toast('📋 URL copiada. Pégala en Google Maps móvil para compartir al auto.');
+  }
+}
+
+async function shareTripToCar(){
+  const r = state.trip.result;
+  if(!r) return;
+  const origin = r.origin, dest = r.dest;
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin[0]},${origin[1]}&destination=${dest[0]},${dest[1]}&travelmode=driving`;
+  if(r.suggestedStops.length>0){
+    const wp = r.suggestedStops.slice(0,3).map(s=>`${s.lat},${s.lng}`).join('|');
+    url += `&waypoints=${encodeURIComponent(wp)}`;
+  }
+  
+  const title = `Ruta: ${state.trip.originText || 'Origen'} → ${state.trip.destText || 'Destino'}`;
+  const text = `${r.distance.toFixed(0)}km · ${r.stopsNeeded} paradas DC · ${formatDuration(r.duration||0)}`;
+  
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text, url });
+      toast('📲 Compartido. Selecciona Tesla en el menú.');
+    } catch(err) {
+      if (err.name !== 'AbortError') {
+        copyToClipboard(url);
+        toast('📋 Ruta copiada al portapapeles');
+      }
+    }
+  } else {
+    copyToClipboard(url);
+    toast('📋 URL de ruta copiada. Pégala en Google Maps móvil.');
+  }
+}
+
+function copyToClipboard(text){
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(()=>fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch(e){}
+  document.body.removeChild(ta);
 }
 
 function toggleFav(){
@@ -1799,6 +1915,135 @@ function toast(msg){
 applyFilters();
 renderTab('filters');
 toast(`${STATIONS.length} estaciones cargadas`);
+
+// ============== PWA: SERVICE WORKER & INSTALL ==============
+let deferredInstallPrompt = null;
+
+// Registrar Service Worker (solo si HTTPS o localhost)
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => {
+        console.log('SW registrado:', reg.scope);
+        // Detectar updates
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              toast('🔄 Nueva versión disponible. Recarga la app.');
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('SW falló:', err));
+  });
+}
+
+// Capturar evento de instalación PWA (Android Chrome / Edge)
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('fabInstall');
+  if (btn) {
+    btn.style.display = 'grid';
+    // Animación sutil para llamar atención
+    btn.style.animation = 'pulse 2s ease-in-out 2';
+  }
+  console.log('PWA installable');
+});
+
+// Click en botón instalar
+document.getElementById('fabInstall')?.addEventListener('click', async () => {
+  if (deferredInstallPrompt) {
+    // Android Chrome / Edge: usar prompt nativo
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') {
+      toast('🎉 ¡App instalada!');
+      document.getElementById('fabInstall').style.display = 'none';
+    } else {
+      toast('Instalación cancelada');
+    }
+    deferredInstallPrompt = null;
+  } else {
+    // iOS Safari u otros: mostrar instrucciones manuales
+    showInstallInstructions();
+  }
+});
+
+// Detectar instalación exitosa
+window.addEventListener('appinstalled', () => {
+  toast('🎉 ¡EV Trip Chile instalada!');
+  document.getElementById('fabInstall').style.display = 'none';
+  deferredInstallPrompt = null;
+});
+
+// Detectar si ya está instalada y corriendo en modo standalone
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+  console.log('Corriendo como PWA instalada ✓');
+  document.body.classList.add('standalone-mode');
+  // Ocultar botón instalar si ya está corriendo como app
+  const installBtn = document.getElementById('fabInstall');
+  if (installBtn) installBtn.style.display = 'none';
+}
+
+// Mostrar instrucciones manuales de instalación (iOS / fallback)
+function showInstallInstructions(){
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid = /android/i.test(navigator.userAgent);
+  const modal = document.getElementById('permissionModal');
+  document.querySelector('.modal-icon').innerHTML = '📲';
+  document.querySelector('.modal-title').textContent = 'Instalar EV Trip Chile';
+
+  let stepsHTML = '';
+  if (isIOS) {
+    stepsHTML = `
+      <p>Instala la app en tu pantalla de inicio:</p>
+      <div class="modal-steps">
+        <div class="modal-step"><div class="modal-step-num">1</div><div class="modal-step-text">Toca el botón <b>Compartir</b> ⎋ en la barra inferior de Safari.</div></div>
+        <div class="modal-step"><div class="modal-step-num">2</div><div class="modal-step-text">Desliza hacia abajo y toca <b>"Añadir a pantalla de inicio"</b>.</div></div>
+        <div class="modal-step"><div class="modal-step-num">3</div><div class="modal-step-text">Toca <b>Añadir</b> arriba a la derecha. ¡Listo!</div></div>
+      </div>
+      <p class="muted">⚠️ En iOS solo funciona desde <b>Safari</b>, no desde Chrome ni otros navegadores.</p>
+    `;
+  } else if (isAndroid) {
+    stepsHTML = `
+      <p>Instala la app en tu pantalla de inicio:</p>
+      <div class="modal-steps">
+        <div class="modal-step"><div class="modal-step-num">1</div><div class="modal-step-text">Toca los tres puntos <b>⋮</b> arriba a la derecha en Chrome.</div></div>
+        <div class="modal-step"><div class="modal-step-num">2</div><div class="modal-step-text">Toca <b>"Instalar app"</b> o <b>"Añadir a pantalla de inicio"</b>.</div></div>
+        <div class="modal-step"><div class="modal-step-num">3</div><div class="modal-step-text">Confirma. La app se instalará como cualquier otra app.</div></div>
+      </div>
+    `;
+  } else {
+    stepsHTML = `
+      <p>Instala la app en tu computadora:</p>
+      <div class="modal-steps">
+        <div class="modal-step"><div class="modal-step-num">1</div><div class="modal-step-text">Busca el ícono <b>⊕ Instalar</b> en la barra de direcciones de Chrome/Edge.</div></div>
+        <div class="modal-step"><div class="modal-step-num">2</div><div class="modal-step-text">O ve al menú ⋮ → <b>Instalar EV Trip Chile</b>.</div></div>
+        <div class="modal-step"><div class="modal-step-num">3</div><div class="modal-step-text">La app se abrirá en su propia ventana, sin barra del navegador.</div></div>
+      </div>
+    `;
+  }
+
+  document.querySelector('.modal-body').innerHTML = stepsHTML +
+    '<p class="muted" style="margin-top:14px">💡 Una vez instalada, funciona offline y aparece como app en tu pantalla.</p>';
+  modal.classList.add('show');
+}
+
+// Si se accede con ?install=true, mostrar instrucciones
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('install') === 'true') {
+  setTimeout(showInstallInstructions, 500);
+}
+
+// Atajos URL: ?action=trip o ?filter=fast
+if (urlParams.get('action') === 'trip') {
+  setTimeout(() => document.querySelector('[data-tab="trip"]')?.click(), 300);
+}
+if (urlParams.get('filter') === 'fast') {
+  setTimeout(() => document.querySelector('[data-quick="fast"]')?.click(), 300);
+}
 </script>
 </body>
 </html>
