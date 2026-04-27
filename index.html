@@ -358,6 +358,239 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);
 .debug-footer{padding:10px;border-top:1px solid #243049;display:flex;gap:6px;background:#11172a;border-radius:0 0 12px 12px}
 .debug-footer .btn{flex:1}
 
+/* ============== TIMELINE TRIP RESULT ============== */
+.tl-hero{
+  text-align:center;padding:18px 16px 14px;
+  background:linear-gradient(135deg,rgba(0,102,204,.08) 0%,rgba(0,128,255,.04) 100%);
+  border-radius:14px;margin-bottom:14px
+}
+.tl-hero-title{
+  font-size:13px;font-weight:600;color:var(--muted);
+  letter-spacing:0.01em;margin-bottom:4px
+}
+.tl-hero-time{
+  font-size:26px;font-weight:800;letter-spacing:-0.02em;
+  color:var(--text);line-height:1.1;margin-bottom:4px
+}
+.tl-hero-time small{
+  font-size:18px;font-weight:700;color:var(--muted);letter-spacing:0
+}
+.tl-hero-sub{font-size:12px;color:var(--muted);font-weight:500}
+
+.tl-stats{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px
+}
+.tl-stat-card{
+  background:var(--bg);border:1px solid var(--line);
+  border-radius:12px;padding:11px 13px;
+  display:flex;flex-direction:column;gap:3px
+}
+.tl-stat-icon{font-size:14px;opacity:.7;margin-bottom:2px}
+.tl-stat-label{font-size:11px;color:var(--muted);font-weight:500}
+.tl-stat-val{font-size:16px;font-weight:700;letter-spacing:-0.01em}
+
+/* Timeline */
+.tl-timeline{
+  margin:18px 0;position:relative;padding-left:4px
+}
+.tl-point{
+  display:flex;align-items:center;gap:11px;
+  margin-bottom:4px;position:relative;z-index:2
+}
+.tl-pin{
+  width:30px;height:30px;border-radius:50%;
+  display:grid;place-items:center;color:#fff;
+  flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.15)
+}
+.tl-pin-origin{background:linear-gradient(135deg,#10b981,#059669)}
+.tl-pin-dest{background:linear-gradient(135deg,#ef4444,#dc2626)}
+.tl-name{
+  font-size:14px;font-weight:700;color:var(--text);
+  letter-spacing:-0.01em
+}
+
+/* Segmento entre puntos: línea + info de SoC */
+.tl-segment{
+  position:relative;padding:8px 0 8px 14px;
+  margin:2px 0
+}
+.tl-line{
+  position:absolute;left:14px;top:0;bottom:0;
+  width:2px;background:var(--line);border-radius:1px
+}
+.tl-seg-info{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 0 8px 30px;flex-wrap:wrap
+}
+.tl-soc{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:13px;font-weight:700;color:#0066cc;
+  background:rgba(0,102,204,.08);
+  padding:3px 9px;border-radius:8px
+}
+.tl-soc svg{opacity:.7}
+.tl-seg-stats{
+  font-size:12px;color:var(--muted);font-weight:500;
+  flex:1;text-align:center
+}
+
+/* Card de parada en timeline */
+.tl-stop-card{
+  display:flex;gap:11px;align-items:flex-start;
+  background:var(--bg2);border:1px solid var(--line);
+  border-radius:12px;padding:12px;
+  margin:6px 0 6px 30px;cursor:pointer;
+  transition:all .15s;position:relative;z-index:2;
+  box-shadow:0 1px 4px rgba(0,0,0,.04)
+}
+.tl-stop-card:hover{
+  border-color:#0066cc;
+  box-shadow:0 4px 14px rgba(0,102,204,.15);
+  transform:translateY(-1px)
+}
+.tl-stop-card::before{
+  content:'';position:absolute;left:-23px;top:24px;
+  width:14px;height:2px;background:var(--line)
+}
+.tl-stop-icon{
+  width:38px;height:38px;border-radius:10px;
+  display:grid;place-items:center;color:#fff;
+  font-size:13px;font-weight:700;flex-shrink:0
+}
+.tl-stop-body{flex:1;min-width:0}
+.tl-stop-name{
+  font-size:14px;font-weight:700;letter-spacing:-0.01em;
+  margin-bottom:2px
+}
+.tl-stop-addr{
+  font-size:11px;color:var(--muted);
+  margin-bottom:7px;line-height:1.3
+}
+.tl-stop-meta{
+  display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px
+}
+.tl-meta-pill{
+  font-size:10px;font-weight:600;padding:3px 7px;
+  background:var(--bg3);border-radius:10px;color:var(--text)
+}
+.tl-stop-time{
+  font-size:12px;color:var(--text);
+  padding-top:5px;border-top:1px dashed var(--line)
+}
+.tl-stop-time b{color:#0066cc;font-weight:700}
+
+/* Banner de ahorro */
+.tl-savings{
+  background:linear-gradient(135deg,#10b981 0%,#059669 100%);
+  color:#fff;padding:13px 16px;border-radius:11px;
+  font-size:13px;text-align:center;font-weight:500;
+  margin:14px 0 6px;
+  box-shadow:0 4px 14px rgba(16,185,129,.3)
+}
+.tl-savings b{font-weight:800;letter-spacing:-0.01em}
+
+/* Sliders estilo bubble-on-thumb (inspiración: app referenciada) */
+.slider-group{display:flex;flex-direction:column;gap:18px;margin-bottom:8px}
+.slider-row{display:flex;flex-direction:column;gap:8px}
+.slider-label{
+  font-size:13px;font-weight:500;line-height:1.45;color:var(--text);
+  letter-spacing:-0.005em
+}
+.slider-wrap{position:relative;padding-top:36px}
+
+/* Bubble flotante con el % */
+.slider-bubble{
+  position:absolute;top:0;
+  background:linear-gradient(135deg,#0066cc,#0080ff);
+  color:#fff;font-size:12px;font-weight:700;
+  padding:5px 11px;border-radius:14px;
+  box-shadow:0 4px 12px rgba(0,102,204,.4);
+  transform:translateX(-50%);
+  pointer-events:none;
+  transition:left .08s linear;
+  white-space:nowrap;
+  letter-spacing:0.02em
+}
+.slider-bubble::after{
+  content:'';position:absolute;bottom:-4px;left:50%;
+  transform:translateX(-50%) rotate(45deg);
+  width:8px;height:8px;
+  background:#0080ff;
+  z-index:-1
+}
+
+/* Slider customizado */
+.pretty-slider{
+  -webkit-appearance:none;appearance:none;
+  width:100%;height:6px;
+  background:var(--line);
+  border-radius:3px;
+  outline:none;
+  cursor:pointer;
+  margin:0
+}
+.pretty-slider::-webkit-slider-runnable-track{
+  height:6px;border-radius:3px;background:transparent
+}
+.pretty-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:22px;height:22px;
+  background:#fff;
+  border:3px solid #0066cc;
+  border-radius:50%;
+  cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,102,204,.3);
+  transition:transform .12s,box-shadow .12s;
+  margin-top:-8px
+}
+.pretty-slider::-webkit-slider-thumb:hover{
+  transform:scale(1.15);
+  box-shadow:0 4px 14px rgba(0,102,204,.5)
+}
+.pretty-slider::-webkit-slider-thumb:active{
+  transform:scale(1.25)
+}
+.pretty-slider::-moz-range-track{
+  height:6px;border-radius:3px;background:var(--line)
+}
+.pretty-slider::-moz-range-thumb{
+  width:22px;height:22px;
+  background:#fff;
+  border:3px solid #0066cc;
+  border-radius:50%;
+  cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,102,204,.3)
+}
+
+/* Track relleno: simulado con gradient */
+.pretty-slider{
+  background:linear-gradient(to right,
+    #0066cc 0%,
+    #0066cc var(--fill, 50%),
+    var(--line) var(--fill, 50%),
+    var(--line) 100%);
+}
+
+/* Banner informativo */
+.info-banner{
+  display:flex;gap:10px;align-items:flex-start;
+  background:rgba(0,102,204,.08);
+  border:1px solid rgba(0,102,204,.2);
+  border-radius:10px;
+  padding:11px 13px;
+  font-size:12px;line-height:1.45;
+  color:var(--text)
+}
+[data-theme="dark"] .info-banner{
+  background:rgba(0,128,255,.1);
+  border-color:rgba(0,128,255,.25)
+}
+.info-icon{
+  flex-shrink:0;
+  color:#0066cc;
+  font-size:14px
+}
+
 /* Progress bar para descargas largas */
 .progress-bar{position:fixed;top:0;left:0;right:0;
   background:linear-gradient(90deg,#0066cc,#0080ff);color:#fff;
@@ -634,7 +867,7 @@ const state = {
   trip: {
     origin:null, originText:'', originCoords:null,
     dest:null, destText:'', destCoords:null,
-    startSoC:90, endSoC:15, safety:'safe', result:null
+    startSoC:90, endSoC:15, safety:'safe', safetyPct:30, result:null
   },
   satellite: false,
   theme: localStorage.getItem('ev_theme') || 'light'
@@ -955,31 +1188,34 @@ function renderTrip(){
       </div>
       <div class="field-dropdown" id="destDropdown"></div>
     </div>
-    <div class="row">
-      <div class="field">
-        <label>SoC inicial: <b>${t.startSoC}%</b></label>
-        <input type="range" min="20" max="100" step="5" value="${t.startSoC}" id="startSoC" style="width:100%">
+    <div class="slider-group">
+      <div class="slider-row">
+        <label class="slider-label">Al iniciar el viaje, la carga de batería va a ser del:</label>
+        <div class="slider-wrap">
+          <input type="range" min="20" max="100" step="5" value="${t.startSoC}" id="startSoC" class="pretty-slider">
+          <div class="slider-bubble" id="startSoCBubble">${t.startSoC}%</div>
+        </div>
       </div>
-      <div class="field">
-        <label>SoC mín. llegada: <b>${t.endSoC}%</b></label>
-        <input type="range" min="5" max="80" step="5" value="${t.endSoC}" id="endSoC" style="width:100%">
+      
+      <div class="slider-row">
+        <label class="slider-label">Durante el viaje, la carga de batería nunca debe bajar del:</label>
+        <div class="slider-wrap">
+          <input type="range" min="5" max="50" step="5" value="${(t.safetyPct !== undefined ? t.safetyPct : 30)}" id="safetyPct" class="pretty-slider">
+          <div class="slider-bubble" id="safetyPctBubble">${(t.safetyPct !== undefined ? t.safetyPct : 30)}%</div>
+        </div>
       </div>
-    </div>
-    <div class="field">
-      <label>🛡️ Modo de seguridad entre paradas</label>
-      <div class="seg" id="safetySeg">
-        ${[
-          ['minimal', '⚠️ Mínimo', '10%'],
-          ['normal', '✅ Normal', '20%'],
-          ['safe', '🛡️ Seguro', '30%'],
-          ['extreme', '🚨 Extremo', '40%']
-        ].map(([v, l, pct]) => 
-          `<button class="${(t.safety||'safe') === v ? 'active' : ''}" data-safety="${v}">${l}<br><small style="opacity:.7;font-size:9px">${pct}</small></button>`
-        ).join('')}
+      
+      <div class="slider-row">
+        <label class="slider-label">Al llegar al destino, la carga de batería tiene que ser mayor al:</label>
+        <div class="slider-wrap">
+          <input type="range" min="5" max="80" step="5" value="${t.endSoC}" id="endSoC" class="pretty-slider">
+          <div class="slider-bubble" id="endSoCBubble">${t.endSoC}%</div>
+        </div>
       </div>
-      <div class="help">
-        <b>Margen mínimo entre paradas y llegada al destino.</b><br>
-        Un margen mayor = más paradas pero menos riesgo si un cargador no funciona o está ocupado.
+      
+      <div class="info-banner">
+        <span class="info-icon">ℹ️</span>
+        <span>Un margen mayor = más paradas pero menos riesgo si un cargador no funciona o está ocupado.</span>
       </div>
     </div>
     <button class="btn btn-primary" id="calcTrip" style="width:100%">Calcular ruta</button>
@@ -990,128 +1226,165 @@ function renderTrip(){
 }
 
 function renderTripResult(r){
+  const stops = r.suggestedStops || [];
+  const safeBuffer = (r.safetyBuffer !== undefined ? r.safetyBuffer * 100 : 30).toFixed(0);
+  const dcChargeTo = 80; // hardcoded del modelo
+  
+  // Calcular tiempos de carga estimados por parada (LFP Tesla MY: ~110kW promedio sesión 30→80%)
+  const calcChargeMin = (kwhAdded, chargerKw) => {
+    const effectivePower = Math.min(chargerKw, 175) * 0.75; // 75% eficiencia promedio
+    return (kwhAdded / effectivePower) * 60;
+  };
+  
+  // Tiempo total de carga
+  let totalChargeMin = 0;
+  stops.forEach(s => {
+    const kwhAdded = TESLA.battery * (dcChargeTo - safeBuffer) / 100;
+    totalChargeMin += calcChargeMin(kwhAdded, s.pc);
+  });
+  
+  // Origen y destino para el timeline
+  const originName = state.trip.originText || 'Origen';
+  const destName = state.trip.destText || 'Destino';
+  
+  // Construir tramos: cada tramo va de un punto al siguiente
+  // [origen → parada1 → parada2 → ... → destino]
+  const points = [
+    { name: originName, isOrigin: true, soc: state.trip.startSoC, km: 0 },
+    ...stops.map(s => ({
+      name: s.n.length > 40 ? s.n.substring(0, 38)+'...' : s.n,
+      addr: `${s.d || ''}${s.c ? ', ' + s.c : ''}`.substring(0, 60),
+      isStop: true,
+      socArrive: safeBuffer,
+      socLeave: dcChargeTo,
+      km: s.distFromOrigin,
+      kw: s.pc,
+      op: s.op,
+      chargeMin: calcChargeMin(TESLA.battery * (dcChargeTo - safeBuffer) / 100, s.pc),
+      lat: s.lat, lng: s.lng
+    })),
+    { name: destName, isDest: true, soc: state.trip.endSoC, km: r.distance }
+  ];
+  
+  // Construir HTML del timeline
+  let timelineHtml = '';
+  for(let i = 0; i < points.length; i++){
+    const p = points[i];
+    const next = points[i+1];
+    
+    if(p.isOrigin || p.isDest){
+      // Punto fijo (origen o destino) con icono de pin
+      timelineHtml += `
+        <div class="tl-point">
+          <div class="tl-pin ${p.isOrigin ? 'tl-pin-origin' : 'tl-pin-dest'}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+          <div class="tl-name">${p.name}</div>
+        </div>
+      `;
+    } else {
+      // Parada de carga: card con info
+      timelineHtml += `
+        <div class="tl-stop-card" data-stop-lat="${p.lat}" data-stop-lng="${p.lng}">
+          <div class="tl-stop-icon" style="background:${OP_COLORS[p.op] || '#94a3b8'}">${OP_INITIALS[p.op] || '?'}</div>
+          <div class="tl-stop-body">
+            <div class="tl-stop-name">${p.name}</div>
+            ${p.addr ? `<div class="tl-stop-addr">${p.addr}</div>` : ''}
+            <div class="tl-stop-meta">
+              <span class="tl-meta-pill">${p.op}</span>
+              <span class="tl-meta-pill">⚡ ${p.kw}kW</span>
+            </div>
+            <div class="tl-stop-time">⏱️ Tiempo de carga: <b>${formatDuration(p.chargeMin)}</b></div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Tramo (línea hacia el siguiente punto) — solo si hay siguiente
+    if(next){
+      const segDistance = next.km - p.km;
+      const segHours = (segDistance / (r.distance / (r.duration / 60))) ; // proporcional al tiempo total
+      const segMin = (segHours * 60);
+      
+      // SoC al salir de este punto
+      const socOut = p.isOrigin ? p.soc : (p.socLeave !== undefined ? p.socLeave : p.soc);
+      // SoC al llegar al siguiente
+      const socIn = next.isDest ? next.soc : (next.socArrive !== undefined ? next.socArrive : next.soc);
+      
+      timelineHtml += `
+        <div class="tl-segment">
+          <div class="tl-line"></div>
+          <div class="tl-seg-info">
+            <div class="tl-soc tl-soc-out">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="16" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/><line x1="6" y1="11" x2="6" y2="13"/><line x1="10" y1="11" x2="10" y2="13"/><line x1="14" y1="11" x2="14" y2="13"/></svg>
+              ${socOut.toFixed(0)}%
+            </div>
+            <div class="tl-seg-stats">${formatDuration(segMin)} (${segDistance.toFixed(0)} km)</div>
+            <div class="tl-soc tl-soc-in">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="16" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/><line x1="6" y1="11" x2="6" y2="13"/><line x1="10" y1="11" x2="10" y2="13"/><line x1="14" y1="11" x2="14" y2="13"/></svg>
+              ${socIn.toFixed(0)}%
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
   return `
-  <div class="trip-results">
-    <div class="trip-stat">
-      <span class="trip-stat-label">Distancia real por carretera</span>
-      <span class="trip-stat-val">${r.distance.toFixed(1)} km</span>
+  <!-- HEADER PRINCIPAL: tiempo total destacado -->
+  <div class="tl-hero">
+    <div class="tl-hero-title">${originName} → ${destName}</div>
+    <div class="tl-hero-time">${formatDuration(r.duration + totalChargeMin)} <small>(${stops.length} ${stops.length === 1 ? 'Parada' : 'Paradas'})</small></div>
+    <div class="tl-hero-sub">Tiempo cargando: ${formatDuration(totalChargeMin)}</div>
+  </div>
+  
+  <!-- STATS GRID: 4 cards estilo el ejemplo -->
+  <div class="tl-stats">
+    <div class="tl-stat-card">
+      <div class="tl-stat-icon">📏</div>
+      <div class="tl-stat-label">Distancia total</div>
+      <div class="tl-stat-val">${r.distance.toFixed(0)} km</div>
     </div>
-    ${r.duration ? `
-    <div class="trip-stat">
-      <span class="trip-stat-label">Tiempo de manejo</span>
-      <span class="trip-stat-val">${formatDuration(r.duration)}</span>
-    </div>` : ''}
-    <div class="trip-stat">
-      <span class="trip-stat-label">Consumo estimado</span>
-      <span class="trip-stat-val">${r.consumption.toFixed(1)} kWh</span>
+    <div class="tl-stat-card">
+      <div class="tl-stat-icon">⏱️</div>
+      <div class="tl-stat-label">Conduciendo</div>
+      <div class="tl-stat-val">${formatDuration(r.duration)}</div>
     </div>
-    <div class="trip-stat">
-      <span class="trip-stat-label">SoC al llegar (sin carga)</span>
-      <span class="trip-stat-val ${r.endSoC < 0 ? 'danger' : r.endSoC < state.trip.endSoC ? 'danger' : r.endSoC < 25 ? 'warning' : 'highlight'}">
-        ${r.endSoC < 0 ? '⚠️ Imposible sin cargar' : r.endSoC.toFixed(0) + '%'}
-      </span>
+    <div class="tl-stat-card">
+      <div class="tl-stat-icon">⚡</div>
+      <div class="tl-stat-label">Costo carga</div>
+      <div class="tl-stat-val">$${r.cost.toLocaleString('es-CL')}</div>
     </div>
-    <div class="trip-stat">
-      <span class="trip-stat-label">Paradas DC sugeridas</span>
-      <span class="trip-stat-val">${r.stopsActual !== undefined ? r.stopsActual : r.stopsNeeded}</span>
-    </div>
-    ${r.stopsActual > 0 ? `<div class="trip-stat">
-      <span class="trip-stat-label">SoC al llegar (con paradas)</span>
-      <span class="trip-stat-val highlight">~${(state.trip.endSoC).toFixed(0)}%</span>
-    </div>` : ''}
-    ${r.safetyMode ? `<div class="trip-stat">
-      <span class="trip-stat-label">🛡️ Modo seguridad</span>
-      <span class="trip-stat-val" style="font-size:12px">${({minimal:'⚠️ Mínimo',normal:'✅ Normal',safe:'🛡️ Seguro',extreme:'🚨 Extremo'})[r.safetyMode]} (${(r.safetyBuffer*100).toFixed(0)}%)</span>
-    </div>` : ''}
-    ${r.minSoCBetweenStops !== undefined ? `<div class="trip-stat">
-      <span class="trip-stat-label">SoC mínimo entre paradas</span>
-      <span class="trip-stat-val" style="color:${r.minSoCBetweenStops < 0.15 ? 'var(--red)' : r.minSoCBetweenStops < 0.25 ? 'var(--yellow)' : 'var(--green)'}">${(r.minSoCBetweenStops*100).toFixed(0)}%</span>
-    </div>` : ''}
-    <div class="trip-stat">
-      <span class="trip-stat-label">Costo eléctrico (mix DC/casa)</span>
-      <span class="trip-stat-val highlight">$${r.cost.toLocaleString('es-CL')} CLP</span>
-    </div>
-    <div class="trip-stat">
-      <span class="trip-stat-label">Equivalente bencina 95</span>
-      <span class="trip-stat-val">$${r.gasolineCost.toLocaleString('es-CL')} CLP</span>
-    </div>
-    <div class="trip-stat">
-      <span class="trip-stat-label">Ahorro vs combustión</span>
-      <span class="trip-stat-val highlight">$${r.savings.toLocaleString('es-CL')} (${r.savingsPct}%)</span>
+    <div class="tl-stat-card">
+      <div class="tl-stat-icon">🛡️</div>
+      <div class="tl-stat-label">Buffer mín.</div>
+      <div class="tl-stat-val">${safeBuffer}%</div>
     </div>
   </div>
-  ${state.tripPOIs && state.tripPOIs.length > 0 ? `
-    <div class="section" style="margin-top:14px">
-      <h3>🌟 Sitios de interés en tu ruta (${state.tripPOIs.length})</h3>
-      <div class="stops-list">
-        ${state.tripPOIs.slice(0, 15).map((p,i)=>{
-          const l = LAYERS[p._type] || LAYERS.attraction;
-          return `<div class="stop-card" data-poi-lat="${p.lat}" data-poi-lng="${p.lng}" style="border-left:3px solid ${l.color}">
-            <div class="stop-num" style="background:${l.color}">${l.icon}</div>
-            <div class="stop-info">
-              <div class="stop-name">${p.n}</div>
-              <div class="stop-meta">${l.label.replace(/^[^\s]+\s/,'')}${p.c ? ' · ' + p.c : ''} · ${p.distFromOrigin ? p.distFromOrigin.toFixed(0)+'km del origen' : ''} · desvío ${p.detour.toFixed(1)}km</div>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-      ${state.tripPOIs.length > 15 ? `<div class="help">+${state.tripPOIs.length - 15} más en el mapa</div>` : ''}
-    </div>
-  ` : ''}
-  ${r.suggestedStops.length > 0 ? `
-    <div class="section" style="margin-top:14px">
-      <h3>⚡ Paradas de carga sugeridas</h3>
-      <div class="legend-row">
-        <div class="legend-item"><span class="leg-dot leg-primary"></span>Sugerida</div>
-        <div class="legend-item"><span class="leg-dot leg-alt"></span>Alternativa</div>
-        <div class="legend-item"><span class="leg-dot leg-dim"></span>Otras (atenuadas)</div>
-      </div>
-      <div class="stops-list">
-        ${r.suggestedStops.map((s,i)=>{
-          const altGroup = r.alternativesByStop[i];
-          const hasAlts = altGroup && altGroup.alternatives.length > 0;
-          return `
-          <div class="stop-card-wrap">
-            <div class="stop-card primary-stop" data-station-lat="${s.lat}" data-station-lng="${s.lng}">
-              <div class="stop-num">${i+1}</div>
-              <div class="stop-info">
-                <div class="stop-name">${s.n}</div>
-                <div class="stop-meta">${s.op} · ${s.pc}kW · ${s.distFromOrigin.toFixed(0)}km del origen · desvío ${s.detour.toFixed(1)}km</div>
-              </div>
-              ${hasAlts ? `<button class="alt-toggle" data-alt-idx="${i}" title="Ver alternativas">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-                <span class="alt-count">${altGroup.alternatives.length}</span>
-              </button>` : ''}
-            </div>
-            ${hasAlts ? `
-              <div class="alt-list" id="altList-${i}" style="display:none">
-                <div class="alt-header">⚠️ Si la parada ${i+1} no está disponible:</div>
-                ${altGroup.alternatives.map(a => `
-                  <div class="alt-card" data-station-lat="${a.lat}" data-station-lng="${a.lng}">
-                    <div class="alt-icon" style="background:${OP_COLORS[a.op]}">${OP_INITIALS[a.op]}</div>
-                    <div class="alt-info">
-                      <div class="alt-name">${a.n}</div>
-                      <div class="alt-meta">${a.op} · ${a.pc}kW · a ${a.distanceFromStop.toFixed(1)}km de la sugerida</div>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            ` : ''}
-          </div>
-        `;
-        }).join('')}
-      </div>
-    </div>
-  ` : ''}
-  ${r ? `
-    <div class="actions" style="grid-template-columns:1fr 1fr 1fr">
-      <button class="btn btn-secondary" id="saveRoute">⭐ Guardar</button>
-      <button class="btn btn-secondary" id="shareTrip">🗺️ Maps</button>
-      <button class="btn btn-secondary" id="clearTrip">✖️ Limpiar</button>
-    </div>
-    <button class="btn btn-primary" id="shareTripNative" style="width:100%;margin-bottom:8px">📲 Compartir ruta al auto</button>
-    <div class="help">📲 Abre el menú nativo del sistema. Selecciona <b>Tesla</b> para enviar la ruta al auto (requiere app Tesla instalada y vinculada).</div>
-  ` : ''}
+  
+  ${r.endSoC < 0 ? `<div class="warn">⚠️ <b>Sin paradas el viaje no es posible.</b> Las paradas sugeridas abajo cubren la energía necesaria.</div>` : ''}
+  
+  <!-- TIMELINE DE TRAMOS -->
+  <div class="tl-timeline">
+    ${timelineHtml}
+  </div>
+  
+  <!-- AHORRO -->
+  <div class="tl-savings">
+    💰 Ahorras <b>$${r.savings.toLocaleString('es-CL')} (${r.savingsPct}%)</b> vs bencina 95
+  </div>
+  
+  <!-- ACCIONES -->
+  <div class="actions" style="grid-template-columns:1fr 1fr 1fr;margin-top:14px">
+    <button class="btn btn-secondary" id="saveRoute">⭐ Guardar</button>
+    <button class="btn btn-secondary" id="shareTrip">🗺️ Maps</button>
+    <button class="btn btn-secondary" id="clearTrip">✖️ Limpiar</button>
+  </div>
+  <button class="btn btn-primary" id="shareTripNative" style="width:100%;margin-bottom:8px">📲 Compartir ruta al auto</button>
+  <div class="help">📲 Abre el menú nativo del sistema. Selecciona <b>Tesla</b> para enviar la ruta al auto.</div>
   `;
 }
 
@@ -1420,17 +1693,61 @@ function attachHandlers(tab){
 
   if(tab==='trip'){
     const sa = document.getElementById('startSoC'), ea = document.getElementById('endSoC');
-    sa?.addEventListener('input', e=>{ state.trip.startSoC = +e.target.value;
-      sa.parentElement.querySelector('label b').textContent = state.trip.startSoC+'%'; });
-    ea?.addEventListener('input', e=>{ state.trip.endSoC = +e.target.value;
-      ea.parentElement.querySelector('label b').textContent = state.trip.endSoC+'%'; });
+    // Helper: actualizar bubble flotante y fill del slider
+    function updateSlider(slider, bubbleId){
+      const bubble = document.getElementById(bubbleId);
+      if(!slider || !bubble) return;
+      const min = +slider.min;
+      const max = +slider.max;
+      const val = +slider.value;
+      const pct = ((val - min) / (max - min)) * 100;
+      // Bubble: posición horizontal alineada al thumb (con compensación de ancho del thumb)
+      const thumbWidth = 22;
+      const trackWidth = slider.offsetWidth;
+      const offset = (pct / 100) * (trackWidth - thumbWidth) + thumbWidth/2;
+      bubble.style.left = offset + 'px';
+      bubble.textContent = val + '%';
+      // Fill del track
+      slider.style.setProperty('--fill', pct + '%');
+    }
     
-    document.querySelectorAll('[data-safety]').forEach(b=>{
-      b.addEventListener('click', ()=>{
-        document.querySelectorAll('[data-safety]').forEach(x=>x.classList.remove('active'));
-        b.classList.add('active');
-        state.trip.safety = b.dataset.safety;
+    // Inicializar bubbles + fills de los 3 sliders
+    const sliders = [
+      ['startSoC', 'startSoCBubble'],
+      ['safetyPct', 'safetyPctBubble'],
+      ['endSoC', 'endSoCBubble']
+    ];
+    
+    setTimeout(() => {
+      sliders.forEach(([id, bubbleId]) => {
+        const sl = document.getElementById(id);
+        updateSlider(sl, bubbleId);
       });
+    }, 50);
+    
+    // Handler SoC inicial
+    sa?.addEventListener('input', e=>{
+      state.trip.startSoC = +e.target.value;
+      updateSlider(sa, 'startSoCBubble');
+    });
+    
+    // Handler SoC mín llegada
+    ea?.addEventListener('input', e=>{
+      state.trip.endSoC = +e.target.value;
+      updateSlider(ea, 'endSoCBubble');
+    });
+    
+    // Handler nuevo slider de safety (reemplaza el segmented)
+    const safetySlider = document.getElementById('safetyPct');
+    safetySlider?.addEventListener('input', e=>{
+      const val = +e.target.value;
+      state.trip.safetyPct = val;
+      // Mapear el valor del slider al modo más cercano (para compatibilidad con la lógica)
+      if(val <= 12) state.trip.safety = 'minimal';
+      else if(val <= 22) state.trip.safety = 'normal';
+      else if(val <= 35) state.trip.safety = 'safe';
+      else state.trip.safety = 'extreme';
+      updateSlider(safetySlider, 'safetyPctBubble');
     });
 
     // Autocomplete origen
@@ -1505,6 +1822,14 @@ function attachHandlers(tab){
       el.addEventListener('click', e=>{
         if(e.target.closest('.alt-toggle')) return;
         const lat = +el.dataset.stationLat, lng = +el.dataset.stationLng;
+        const station = STATIONS.find(x=>x.lat===lat && x.lng===lng);
+        if(station){ map.flyTo([station.lat, station.lng], 15); showStation({...station, _type:'ev'}); }
+      });
+    });
+    // Click en tarjeta del timeline → abrir detalle de esa parada
+    document.querySelectorAll('[data-stop-lat]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        const lat = +el.dataset.stopLat, lng = +el.dataset.stopLng;
         const station = STATIONS.find(x=>x.lat===lat && x.lng===lng);
         if(station){ map.flyTo([station.lat, station.lng], 15); showStation({...station, _type:'ev'}); }
       });
@@ -1800,14 +2125,15 @@ async function calculateTrip(){
   // Cada parada carga al 80%
   // El último tramo termina con el SoC objetivo del usuario (ej 50%)
   
+  // Buffer de seguridad: usa el valor exacto del slider (5-50%)
+  // Si no está definido, usa el modo discreto de fallback
   const safetyBuffers = {
-    minimal: 0.10,  // parar a 10%
-    normal: 0.20,   // parar a 20%
-    safe: 0.30,     // parar a 30% ← DEFAULT
-    extreme: 0.40   // parar a 40%
+    minimal: 0.10, normal: 0.20, safe: 0.30, extreme: 0.40
   };
   const safetyMode = state.trip.safety || 'safe';
-  const safetyBuffer = safetyBuffers[safetyMode];
+  const safetyBuffer = (state.trip.safetyPct !== undefined) 
+    ? state.trip.safetyPct / 100 
+    : safetyBuffers[safetyMode];
   
   // Parámetros del modelo
   const minSoC = safetyBuffer;              // Cada parada llegas con esto
