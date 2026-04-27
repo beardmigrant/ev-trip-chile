@@ -478,11 +478,9 @@ body.standalone-mode{padding-top:0}
   </div>
   <div class="chips">
     <div class="chip layer-chip active" data-layer="ev">⚡ Cargadores <span id="cEV">0</span></div>
-    <div class="chip layer-chip" data-layer="hotel">🏨 Hoteles <span id="cHotel">0</span></div>
-    <div class="chip layer-chip" data-layer="restaurant">🍽️ Restaurants <span id="cRest">0</span></div>
     <div class="chip layer-chip" data-layer="historic">🏛️ Históricos <span id="cHist">0</span></div>
-    <div class="chip layer-chip" data-layer="nature">🌲 Naturaleza <span id="cNat">0</span></div>
-    <div class="chip layer-chip" data-layer="attraction">📍 Atracciones <span id="cAttr">0</span></div>
+    <div class="chip layer-chip" data-layer="attraction">📍 Interés <span id="cAttr">0</span></div>
+    <div class="chip layer-chip" data-layer="recreation">🎭 Recreación <span id="cRec">0</span></div>
     <div class="chip layer-chip" data-layer="astro">🌌 Astronomía <span id="cAstro">0</span></div>
   </div>
 </div>
@@ -580,11 +578,9 @@ let TOURISM_POIS = [];
 // Estado de capas activas
 const LAYERS = {
   ev: { active: true, label: '⚡ Cargadores', color: null },
-  hotel: { active: false, label: '🏨 Hoteles', color: '#8B5CF6', icon: '🏨' },
-  restaurant: { active: false, label: '🍽️ Restaurants', color: '#DC2626', icon: '🍽️' },
   historic: { active: false, label: '🏛️ Históricos', color: '#92400E', icon: '🏛️' },
-  nature: { active: false, label: '🌲 Naturaleza', color: '#10B981', icon: '🌲' },
-  attraction: { active: false, label: '📍 Atracciones', color: '#0891B2', icon: '📍' },
+  attraction: { active: false, label: '📍 Interés', color: '#0891B2', icon: '📍' },
+  recreation: { active: false, label: '🎭 Recreación', color: '#EC4899', icon: '🎭' },
   astro: { active: false, label: '🌌 Astronomía', color: '#7C3AED', icon: '🌌' }
 };
 
@@ -740,7 +736,7 @@ function applyFilters(){
   }
 
   // CAPAS TURISMO
-  ['hotel','restaurant','historic','nature','attraction','astro'].forEach(layerKey=>{
+  ['historic','attraction','recreation','astro'].forEach(layerKey=>{
     if(LAYERS[layerKey].active && TOURISM_POIS.length){
       const pois = TOURISM_POIS.filter(p => p.cat === layerKey);
       combined = combined.concat(pois.map(p=>({...p, _type:layerKey})));
@@ -753,22 +749,16 @@ function applyFilters(){
 }
 
 function updateChipCounts(){
-  // Helper: contar puntos disponibles en cada capa (independiente de filtros aplicados)
   const countCat = (cat) => TOURISM_POIS.filter(p => p.cat === cat).length;
-  
-  // Si TOURISM_POIS no tiene datos aún, mostrar punto en vez de 0
   const fmt = n => n > 0 ? n : '·';
   
-  // EV siempre tiene datos (vienen embebidos)
   const elEV = document.getElementById('cEV');
   if(elEV) elEV.textContent = STATIONS.length;
   
   const mapping = {
-    cHotel: countCat('hotel'),
-    cRest: countCat('restaurant'),
     cHist: countCat('historic'),
-    cNat: countCat('nature'),
     cAttr: countCat('attraction'),
+    cRec: countCat('recreation'),
     cAstro: countCat('astro')
   };
   
@@ -859,7 +849,7 @@ function renderTrip(){
     <div class="field">
       <label>🌟 Mostrar en la ruta:</label>
       <div class="opchips" style="margin-top:6px">
-        ${['ev','hotel','restaurant','historic','nature','attraction','astro'].map(k=>{
+        ${['ev','historic','attraction','recreation','astro'].map(k=>{
           const l = LAYERS[k];
           const isOn = state.tripShowLayers ? state.tripShowLayers.has(k) : (k==='ev');
           return `<div class="opchip ${isOn?'active':''}" data-trip-layer="${k}" style="font-size:11px">
@@ -909,7 +899,7 @@ function renderTripResult(r){
   return `
   <div class="trip-results">
     <div class="trip-stat">
-      <span class="trip-stat-label">Distancia por carretera</span>
+      <span class="trip-stat-label">Distancia real por carretera</span>
       <span class="trip-stat-val">${r.distance.toFixed(1)} km</span>
     </div>
     ${r.duration ? `
@@ -1121,8 +1111,8 @@ function renderTourismPOI(p){
   const isFav = state.favorites.some(f=>f.lat===p.lat && f.lng===p.lng);
   const layer = LAYERS[p._type] || {color:'#64748b', icon:'📍', label:'POI'};
   const typeLabels = {
-    hotel: 'Alojamiento', restaurant: 'Restaurant', historic: 'Sitio histórico',
-    nature: 'Naturaleza', attraction: 'Atracción', astro: 'Astronomía'
+    historic: 'Sitio histórico', attraction: 'Sitio de interés',
+    recreation: 'Recreación', astro: 'Astronomía'
   };
   return `
   <div class="station-header">
@@ -1660,13 +1650,15 @@ async function calculateTrip(){
     }
   } catch(e){ console.warn('OSRM falló:', e); }
 
-  // Fallback: si no hay ruta real, usar haversine × 1.25
+  // PRIORIDAD: SIEMPRE ruta real. Si todos los servidores fallan, abortamos.
   if(!realRoute){
-    const dStraight = haversine(origin, dest);
-    distance = dStraight * 1.25;
-    duration = (distance / 90) * 60; // 90 km/h promedio
-    toast('⚠️ Sin conexión a routing. Usando estimación recta.', 'warning');
+    debugLog('❌ Todos los servidores OSRM fallaron - NO se calcula con fallback');
+    toast('❌ No se pudo calcular la ruta real. Servidores OSRM saturados. Espera 30-60 segundos y reintenta.', 'warning');
+    restoreBtn();
+    clearTimeout(safetyTimer);
+    return; // SALIR sin mostrar nada - no fallback
   }
+  debugLog(`✓ Usando ruta real OSRM: ${distance.toFixed(0)}km, ${(duration/60).toFixed(1)}h`);
 
   const consumption = distance * TESLA.consHwy;
   const startEnergy = TESLA.battery * (state.trip.startSoC / 100);
@@ -1830,41 +1822,81 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 12000){
 }
 
 async function fetchOSRMRoute(origin, dest, waypoints=[]){
-  // OSRM espera lng,lat (no lat,lng)
   const points = [origin, ...waypoints, dest];
   const coords = points.map(p => `${p[1]},${p[0]}`).join(';');
-  // Usar overview=simplified en vez de full → MUCHO más liviano (cientos de puntos vs miles)
-  const params = '?overview=simplified&geometries=geojson&steps=false';
   
+  // PRIORIDAD: precisión de la ruta. overview=full = mejor trazado por carreteras reales
+  // Reduce el detalle si la ruta es muy larga vía geometries=polyline (más comprimido)
+  const dist = haversine(origin, dest);
+  // Para rutas largas (>500km) usamos overview=full pero con geometría comprimida
+  const overview = 'full';
+  const params = `?overview=${overview}&geometries=geojson&steps=false&alternatives=false`;
+  
+  // 5 servidores OSRM públicos. Si uno falla por load balancing, otro toma
   const endpoints = [
     `https://router.project-osrm.org/route/v1/driving/${coords}${params}`,
-    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coords}${params}`
+    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coords}${params}`,
+    `https://router.project-osrm.org/route/v1/car/${coords}${params}`,
   ];
   
-  for(const url of endpoints){
+  // Timeout dinámico: rutas más largas = más tiempo
+  // <300km: 15s, 300-700km: 25s, 700-1500km: 40s, >1500km: 60s
+  let timeoutMs = 15000;
+  if(dist > 300) timeoutMs = 25000;
+  if(dist > 700) timeoutMs = 40000;
+  if(dist > 1500) timeoutMs = 60000;
+  
+  debugLog(`OSRM request: ${dist.toFixed(0)}km recta, timeout ${timeoutMs/1000}s`);
+  showProgress(`🛣️ Calculando ruta real (${dist.toFixed(0)}km)...`);
+  
+  for(let i = 0; i < endpoints.length; i++){
+    const url = endpoints[i];
+    const serverName = url.match(/https?:\/\/([^\/]+)/)[1];
+    
     try {
-      console.log('Probando OSRM:', url.substring(0, 60));
+      debugLog(`Probando servidor ${i+1}/${endpoints.length}: ${serverName}`);
+      showProgress(`🛣️ Servidor ${i+1}/${endpoints.length}: ${serverName}...`);
+      
       const res = await fetchWithTimeout(url, { 
         method: 'GET',
         headers: { 'Accept': 'application/json' }
-      }, 12000); // 12 segundos máximo
+      }, timeoutMs);
       
       if(!res.ok){
-        console.warn('OSRM HTTP', res.status);
+        debugLog(`  ✗ HTTP ${res.status}`);
         continue;
       }
+      
       const data = await res.json();
-      if(data.code === 'Ok' && data.routes && data.routes.length > 0){
-        console.log('OSRM OK:', data.routes[0].distance/1000, 'km');
-        return data.routes[0];
+      
+      if(data.code !== 'Ok'){
+        debugLog(`  ✗ OSRM code: ${data.code} - ${data.message || ''}`);
+        continue;
       }
+      
+      if(!data.routes || data.routes.length === 0){
+        debugLog(`  ✗ Sin rutas en respuesta`);
+        continue;
+      }
+      
+      const route = data.routes[0];
+      const numPoints = route.geometry?.coordinates?.length || 0;
+      const realDist = route.distance / 1000;
+      const realDuration = route.duration / 60;
+      
+      debugLog(`  ✓ ÉXITO: ${realDist.toFixed(1)}km, ${realDuration.toFixed(0)}min, ${numPoints} puntos`);
+      hideProgress();
+      return route;
+      
     } catch(e){
-      console.warn('OSRM endpoint falló:', e.name, e.message);
-      // Si fue timeout, sigue al próximo endpoint
+      const errType = e.name === 'AbortError' ? 'TIMEOUT' : e.name;
+      debugLog(`  ✗ ${errType}: ${e.message || ''}`);
     }
   }
   
-  return null; // todos los endpoints fallaron
+  debugLog('TODOS los servidores OSRM fallaron');
+  hideProgress();
+  return null;
 }
 
 let routeLine = null;
@@ -1878,24 +1910,25 @@ function drawRouteLine(origin, dest, stops, geometry){
   routeMarkers = [];
 
   if(geometry && geometry.coordinates && geometry.coordinates.length > 0){
-    // RUTA REAL: GeoJSON LineString [lng, lat]
+    // RUTA REAL POR CARRETERAS: GeoJSON LineString [lng, lat]
     const latlngs = geometry.coordinates.map(c => [c[1], c[0]]);
-    // Dibujar borde + línea encima para mejor visibilidad
+    debugLog(`Dibujando ruta real: ${latlngs.length} puntos de geometría`);
+    
+    // Borde blanco grueso + línea azul encima = visibilidad sobre cualquier fondo
     routeOutline = L.polyline(latlngs, {
-      color: '#ffffff', weight: 7, opacity: 0.9, lineCap: 'round', lineJoin: 'round'
+      color: '#ffffff', weight: 8, opacity: 0.95, 
+      lineCap: 'round', lineJoin: 'round'
     }).addTo(map);
     routeLine = L.polyline(latlngs, {
-      color: '#0066cc', weight: 4, opacity: 1, lineCap: 'round', lineJoin: 'round'
+      color: '#0066cc', weight: 5, opacity: 1, 
+      lineCap: 'round', lineJoin: 'round'
     }).addTo(map);
-    // Markers origen/destino + paradas
+    
     addRouteMarkers(origin, dest, stops);
     map.fitBounds(L.latLngBounds(latlngs).pad(0.12));
   } else {
-    // FALLBACK: línea recta punteada
-    const points = [origin, ...stops.map(s=>[s.lat, s.lng]), dest];
-    routeLine = L.polyline(points, { color:'#0066cc', weight:4, opacity:0.75, dashArray:'6,8' }).addTo(map);
-    addRouteMarkers(origin, dest, stops);
-    map.fitBounds(L.latLngBounds(points).pad(0.18));
+    // No debería llegar aquí porque calculateTrip aborta si no hay ruta real
+    debugLog('drawRouteLine sin geometría - esto no debería pasar');
   }
 }
 
@@ -2591,36 +2624,32 @@ async function loadTourismData(){
   // Antes: -56 a -17.5 (todo Chile incluyendo antártico). Demasiado para 1 query.
   // Ahora: -56 a -17.5 sigue válido pero con queries más pequeñas
   const queries = [
-    // Hoteles + alojamiento
-    `[out:json][timeout:60];
-     (node["tourism"="hotel"](-56,-76,-17.5,-66);
-      node["tourism"="hostel"](-56,-76,-17.5,-66);
-      node["tourism"="guest_house"](-56,-76,-17.5,-66);
-      node["tourism"="apartment"](-56,-76,-17.5,-66););
-     out tags center;`,
-    // Restaurants + cafés
-    `[out:json][timeout:60];
-     (node["amenity"="restaurant"](-56,-76,-17.5,-66);
-      node["amenity"="cafe"](-56,-76,-17.5,-66););
-     out tags center;`,
-    // Sitios históricos / culturales
+    // Sitios históricos / culturales (museos, monumentos, ruinas)
     `[out:json][timeout:60];
      (node["historic"](-56,-76,-17.5,-66);
       node["tourism"="museum"](-56,-76,-17.5,-66);
-      node["tourism"="artwork"](-56,-76,-17.5,-66););
+      node["tourism"="artwork"](-56,-76,-17.5,-66);
+      node["amenity"="arts_centre"](-56,-76,-17.5,-66);
+      node["amenity"="theatre"](-56,-76,-17.5,-66););
      out tags center;`,
-    // Naturaleza (miradores, parques)
-    `[out:json][timeout:60];
-     (node["tourism"="viewpoint"](-56,-76,-17.5,-66);
-      node["leisure"="park"](-56,-76,-17.5,-66);
-      node["natural"="peak"](-56,-76,-17.5,-66);
-      node["boundary"="national_park"](-56,-76,-17.5,-66););
-     out tags center;`,
-    // Atracciones genéricas
+    // Sitios de interés (atracciones, miradores, parques nacionales)
     `[out:json][timeout:60];
      (node["tourism"="attraction"](-56,-76,-17.5,-66);
+      node["tourism"="viewpoint"](-56,-76,-17.5,-66);
       node["tourism"="theme_park"](-56,-76,-17.5,-66);
-      node["tourism"="zoo"](-56,-76,-17.5,-66););
+      node["boundary"="national_park"](-56,-76,-17.5,-66);
+      node["tourism"="information"](-56,-76,-17.5,-66););
+     out tags center;`,
+    // Recreación / entretenimiento (cines, parques de diversiones, zoos, casinos)
+    `[out:json][timeout:60];
+     (node["tourism"="zoo"](-56,-76,-17.5,-66);
+      node["tourism"="aquarium"](-56,-76,-17.5,-66);
+      node["amenity"="cinema"](-56,-76,-17.5,-66);
+      node["amenity"="casino"](-56,-76,-17.5,-66);
+      node["amenity"="nightclub"](-56,-76,-17.5,-66);
+      node["leisure"="water_park"](-56,-76,-17.5,-66);
+      node["leisure"="amusement_arcade"](-56,-76,-17.5,-66);
+      node["leisure"="sports_centre"](-56,-76,-17.5,-66););
      out tags center;`,
     // Astronomía: observatorios y planetarios
     `[out:json][timeout:60];
@@ -2641,7 +2670,7 @@ async function loadTourismData(){
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
   ];
   
-  const queryLabels = ['hoteles','restaurants','sitios históricos','naturaleza','atracciones','astronomía'];
+  const queryLabels = ['sitios históricos','sitios de interés','recreación','astronomía'];
   const allResults = [];
   
   for(let i = 0; i < queries.length; i++){
@@ -2690,7 +2719,7 @@ async function loadTourismData(){
   
   // Procesar resultados
   TOURISM_POIS = [];
-  const categoryMap = ['hotel','restaurant','historic','nature','attraction','astro'];
+  const categoryMap = ['historic','attraction','recreation','astro'];
   
   allResults.forEach(({queryIdx, elements}) => {
     const cat = categoryMap[queryIdx];
