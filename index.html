@@ -1585,14 +1585,25 @@ async function calculateTrip(){
     toast('No se reconoce el destino. Selecciona del dropdown o usa lat,lng', 'warning');
     return;
   }
-  // Cache
   state.trip.originCoords = origin;
   state.trip.destCoords = dest;
 
-  // Mostrar loading
   const calcBtn = document.getElementById('calcTrip');
+  const restoreBtn = () => {
+    const b = document.getElementById('calcTrip');
+    if(b){ b.disabled = false; b.innerHTML = 'Calcular ruta'; }
+  };
+  
   if(calcBtn){ calcBtn.disabled = true; calcBtn.innerHTML = '⏳ Calculando ruta real...'; }
   toast('🛣️ Calculando ruta por carreteras...');
+  
+  // Safety timeout: si pasan 25 segundos, forzar restore
+  const safetyTimer = setTimeout(() => {
+    restoreBtn();
+    toast('⚠️ Cálculo demoró demasiado. Intenta de nuevo.', 'warning');
+  }, 25000);
+  
+  try {
 
   // OBTENER RUTA REAL POR CARRETERAS (OSRM)
   let realRoute = null;
@@ -1686,45 +1697,64 @@ async function calculateTrip(){
 
   // ============== POIs DE TURISMO EN EL CORREDOR DE LA RUTA ==============
   state.tripPOIs = [];
-  if(state.tripShowLayers && state.tripShowLayers.size > 0){
+  if(state.tripShowLayers && state.tripShowLayers.size > 0 && TOURISM_POIS.length > 0){
     const layersToInclude = Array.from(state.tripShowLayers).filter(l => l !== 'ev');
-    if(layersToInclude.length > 0 && TOURISM_POIS.length > 0){
-      // Si tenemos geometría real, usar el corredor real; sino aproximar por línea recta
-      const routePath = routeGeometry && routeGeometry.coordinates
-        ? routeGeometry.coordinates.map(c => [c[1], c[0]])  // [lat, lng]
+    if(layersToInclude.length > 0){
+      // SIMPLIFICAR el corredor: tomar máx 50 puntos de la ruta para evitar O(N×M) explosivo
+      const fullPath = routeGeometry && routeGeometry.coordinates
+        ? routeGeometry.coordinates.map(c => [c[1], c[0]])
         : [origin, dest];
       
-      const pois = TOURISM_POIS
-        .filter(p => layersToInclude.includes(p.cat))
-        .map(p => {
-          // Distancia mínima al corredor (a cualquier segmento de la ruta)
-          let minDist = Infinity;
-          let progress = 0;
-          for(let i = 0; i < routePath.length - 1; i++){
-            const d = distToSegment([p.lat, p.lng], routePath[i], routePath[i+1]);
-            if(d < minDist){
-              minDist = d;
-              progress = i / routePath.length;
-            }
-          }
-          return {
-            ...p,
-            _type: p.cat,
-            detour: minDist,
-            distFromOrigin: progress * distance,
-            progress: progress
-          };
-        })
-        .filter(p => p.detour <= 15)  // máximo 15km de desvío del corredor
-        .sort((a,b) => a.distFromOrigin - b.distFromOrigin);
+      // Submuestrear el path: máx 50 segmentos
+      const step = Math.max(1, Math.floor(fullPath.length / 50));
+      const routePath = [];
+      for(let i = 0; i < fullPath.length; i += step) routePath.push(fullPath[i]);
+      if(routePath[routePath.length - 1] !== fullPath[fullPath.length - 1]){
+        routePath.push(fullPath[fullPath.length - 1]);
+      }
       
-      // Limitar para no saturar - máx 30 POIs distribuidos en la ruta
+      console.log(`Buscando POIs en corredor de ${routePath.length} segmentos sobre ${TOURISM_POIS.length} puntos`);
+      
+      // PRE-FILTRO rápido: bbox del corredor + buffer 0.2° (~22km)
+      const lats = routePath.map(p => p[0]);
+      const lngs = routePath.map(p => p[1]);
+      const bbox = {
+        minLat: Math.min(...lats) - 0.2, maxLat: Math.max(...lats) + 0.2,
+        minLng: Math.min(...lngs) - 0.2, maxLng: Math.max(...lngs) + 0.2
+      };
+      
+      // Pre-filtrar por bbox (rapidísimo) + categoría
+      const candidates = TOURISM_POIS.filter(p => 
+        layersToInclude.includes(p.cat) &&
+        p.lat >= bbox.minLat && p.lat <= bbox.maxLat &&
+        p.lng >= bbox.minLng && p.lng <= bbox.maxLng
+      );
+      
+      console.log(`Candidatos tras bbox: ${candidates.length}`);
+      
+      // Ahora SÍ calcular distancia al corredor (solo sobre candidates filtrados)
+      const pois = candidates.map(p => {
+        let minDist = Infinity;
+        let bestSegIdx = 0;
+        for(let i = 0; i < routePath.length - 1; i++){
+          const d = distToSegment([p.lat, p.lng], routePath[i], routePath[i+1]);
+          if(d < minDist){ minDist = d; bestSegIdx = i; }
+        }
+        return {
+          ...p,
+          _type: p.cat,
+          detour: minDist,
+          distFromOrigin: (bestSegIdx / routePath.length) * distance
+        };
+      })
+      .filter(p => p.detour <= 15)
+      .sort((a,b) => a.distFromOrigin - b.distFromOrigin);
+      
       state.tripPOIs = pois.slice(0, 30);
-      
-      // Marcar como destacados en el mapa
       state.tripPOIs.forEach(p => {
         state.alternativeStops.add(`${p.lat}_${p.lng}`);
       });
+      console.log(`POIs en ruta: ${state.tripPOIs.length}`);
     }
   }
   
@@ -1734,40 +1764,67 @@ async function calculateTrip(){
   drawRouteLine(origin, dest, finalStops, routeGeometry);
   renderTab('trip');
 
-  // Restaurar botón
-  const calcBtnEnd = document.getElementById('calcTrip');
-  if(calcBtnEnd){ calcBtnEnd.disabled = false; calcBtnEnd.innerHTML = 'Calcular ruta'; }
-
   toast(`✓ Ruta: ${distance.toFixed(0)}km · ${(duration/60).toFixed(1)}h · ${stopsNeeded} paradas DC`);
+  
+  } catch(err) {
+    console.error('Error en calculateTrip:', err);
+    toast('❌ Error al calcular ruta: ' + (err.message || 'desconocido'), 'warning');
+  } finally {
+    clearTimeout(safetyTimer);
+    restoreBtn();
+  }
 }
 
 // ============== OSRM ROUTING ==============
+async function fetchWithTimeout(url, options = {}, timeoutMs = 12000){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timer);
+    return res;
+  } catch(e){
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
 async function fetchOSRMRoute(origin, dest, waypoints=[]){
   // OSRM espera lng,lat (no lat,lng)
   const points = [origin, ...waypoints, dest];
   const coords = points.map(p => `${p[1]},${p[0]}`).join(';');
-  const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`;
-  try {
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    });
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if(data.code !== 'Ok' || !data.routes || data.routes.length === 0) throw new Error('No route');
-    return data.routes[0];
-  } catch(e){
-    console.error('OSRM error:', e);
-    // Fallback: probar con servidor alternativo
+  // Usar overview=simplified en vez de full → MUCHO más liviano (cientos de puntos vs miles)
+  const params = '?overview=simplified&geometries=geojson&steps=false';
+  
+  const endpoints = [
+    `https://router.project-osrm.org/route/v1/driving/${coords}${params}`,
+    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coords}${params}`
+  ];
+  
+  for(const url of endpoints){
     try {
-      const url2 = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coords}?overview=full&geometries=geojson`;
-      const res2 = await fetch(url2);
-      if(!res2.ok) throw new Error('Fallback failed');
-      const data2 = await res2.json();
-      if(data2.code === 'Ok') return data2.routes[0];
-    } catch(e2){ console.error('Fallback OSRM error:', e2); }
-    return null;
+      console.log('Probando OSRM:', url.substring(0, 60));
+      const res = await fetchWithTimeout(url, { 
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      }, 12000); // 12 segundos máximo
+      
+      if(!res.ok){
+        console.warn('OSRM HTTP', res.status);
+        continue;
+      }
+      const data = await res.json();
+      if(data.code === 'Ok' && data.routes && data.routes.length > 0){
+        console.log('OSRM OK:', data.routes[0].distance/1000, 'km');
+        return data.routes[0];
+      }
+    } catch(e){
+      console.warn('OSRM endpoint falló:', e.name, e.message);
+      // Si fue timeout, sigue al próximo endpoint
+    }
   }
+  
+  return null; // todos los endpoints fallaron
 }
 
 let routeLine = null;
